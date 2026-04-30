@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/theme.dart';
+import 'core/theme_notifier.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
@@ -16,6 +17,7 @@ import 'screens/settings_screen.dart';
 import 'screens/health_tips_screen.dart';
 import 'screens/symptom_checker_screen.dart';
 import 'screens/pdf_view_screen.dart';
+import 'screens/medicine_reminder_screen.dart';
 import 'services/database_service.dart';
 import 'services/notification_service.dart';
 import 'services/sqlite_service.dart';
@@ -38,12 +40,32 @@ void main() async {
 
   await DatabaseService.instance.initialize();
   await NotificationService.instance.initialize();
+  await ThemeNotifier.instance.load();
 
   runApp(const VaxGuardApp());
 }
 
-class VaxGuardApp extends StatelessWidget {
+class VaxGuardApp extends StatefulWidget {
   const VaxGuardApp({super.key});
+
+  @override
+  State<VaxGuardApp> createState() => _VaxGuardAppState();
+}
+
+class _VaxGuardAppState extends State<VaxGuardApp> {
+  @override
+  void initState() {
+    super.initState();
+    ThemeNotifier.instance.addListener(_onThemeChanged);
+  }
+
+  @override
+  void dispose() {
+    ThemeNotifier.instance.removeListener(_onThemeChanged);
+    super.dispose();
+  }
+
+  void _onThemeChanged() => setState(() {});
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +73,8 @@ class VaxGuardApp extends StatelessWidget {
       title: AppStrings.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme(),
+      darkTheme: AppTheme.darkTheme(),
+      themeMode: ThemeNotifier.instance.themeMode,
       locale: const Locale('en'),
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
@@ -94,6 +118,8 @@ class VaxGuardApp extends StatelessWidget {
         return _buildRoute(const SymptomCheckerScreen(), settings);
       case AppConstants.pdfViewRoute:
         return _buildRoute(const PdfViewScreen(), settings);
+      case AppConstants.medicineReminderRoute:
+        return _buildRoute(const MedicineReminderScreen(), settings);
       default:
         return _buildRoute(const HomeScreen(), settings);
     }
