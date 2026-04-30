@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_constants.dart';
 
 class NotificationService {
@@ -118,6 +119,16 @@ class NotificationService {
     required String body,
     String? payload,
   }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final quietStartRaw = prefs.getString('quiet_start');
+    final quietEndRaw = prefs.getString('quiet_end');
+    if (_isInQuietHours(quietStartRaw, quietEndRaw)) {
+      // Respect quiet hours for non-critical notifications.
+      if (!(title.toLowerCase().contains('urgent') ||
+          body.toLowerCase().contains('emergency'))) {
+        return;
+      }
+    }
     final androidDetails = AndroidNotificationDetails(
       AppConstants.vaccineReminderChannelId,
       AppConstants.vaccineReminderChannelName,
@@ -140,6 +151,23 @@ class NotificationService {
       notificationDetails,
       payload: payload,
     );
+  }
+
+  bool _isInQuietHours(String? startRaw, String? endRaw) {
+    if (startRaw == null || endRaw == null) return false;
+    final startParts = startRaw.split(':');
+    final endParts = endRaw.split(':');
+    if (startParts.length != 2 || endParts.length != 2) return false;
+    final startMinutes =
+        (int.tryParse(startParts[0]) ?? 22) * 60 + (int.tryParse(startParts[1]) ?? 0);
+    final endMinutes =
+        (int.tryParse(endParts[0]) ?? 7) * 60 + (int.tryParse(endParts[1]) ?? 0);
+    final now = DateTime.now();
+    final currentMinutes = now.hour * 60 + now.minute;
+    if (startMinutes <= endMinutes) {
+      return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+    }
+    return currentMinutes >= startMinutes || currentMinutes < endMinutes;
   }
 
   Future<void> cancelNotification(String vaccineId) async {

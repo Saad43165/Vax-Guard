@@ -13,10 +13,12 @@ class PdfViewScreen extends StatefulWidget {
 class _PdfViewScreenState extends State<PdfViewScreen> {
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Vaccine Report'),
+        title: Text('Report', style: TextStyle(color: isDark ? Colors.white : Colors.white)),
+        centerTitle: false,
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -24,22 +26,6 @@ class _PdfViewScreenState extends State<PdfViewScreen> {
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share_rounded),
-            onPressed: () async {
-              await PdfService.instance.shareVaccineRecordsPdf();
-            },
-            tooltip: 'Share PDF',
-          ),
-          IconButton(
-            icon: const Icon(Icons.print_rounded),
-            onPressed: () async {
-              await PdfService.instance.printVaccineRecordsPdf();
-            },
-            tooltip: 'Print',
-          ),
-        ],
       ),
       body: PdfPreview(
         build: (format) async {
@@ -51,13 +37,13 @@ class _PdfViewScreenState extends State<PdfViewScreen> {
         allowPrinting: true,
         allowSharing: true,
         pdfFileName: 'VaxGuard_Report.pdf',
-        loadingWidget: const Center(
+        loadingWidget: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Generating PDF...'),
+              CircularProgressIndicator(color: AppTheme.primary),
+              const SizedBox(height: 16),
+              Text('Generating PDF...', style: TextStyle(color: isDark ? AppTheme.darkTextPrimary : AppTheme.textPrimary)),
             ],
           ),
         ),

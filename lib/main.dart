@@ -16,12 +16,14 @@ import 'screens/dashboard_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/health_tips_screen.dart';
 import 'screens/symptom_checker_screen.dart';
+import 'screens/disease_assessment_hub_screen.dart';
 import 'screens/pdf_view_screen.dart';
 import 'screens/medicine_reminder_screen.dart';
+import 'screens/emergency_mode_screen.dart';
 import 'services/database_service.dart';
 import 'services/notification_service.dart';
-import 'services/sqlite_service.dart';
 import 'utils/app_constants.dart';
+import 'utils/app_strings.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -116,23 +118,34 @@ class _VaxGuardAppState extends State<VaxGuardApp> {
         return _buildRoute(const HealthTipsScreen(), settings);
       case AppConstants.symptomCheckerRoute:
         return _buildRoute(const SymptomCheckerScreen(), settings);
+      case AppConstants.assessmentsRoute:
+        return _buildRoute(const DiseaseAssessmentHubScreen(), settings);
       case AppConstants.pdfViewRoute:
         return _buildRoute(const PdfViewScreen(), settings);
       case AppConstants.medicineReminderRoute:
         return _buildRoute(const MedicineReminderScreen(), settings);
+      case AppConstants.emergencyModeRoute:
+        return _buildRoute(const EmergencyModeScreen(), settings);
       default:
         return _buildRoute(const HomeScreen(), settings);
     }
   }
 
   Route<dynamic> _buildRoute(Widget page, RouteSettings settings) {
-    return MaterialPageRoute(
-      builder: (context) => page,
+    return PageRouteBuilder(
       settings: settings,
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final fade = CurvedAnimation(parent: animation, curve: Curves.easeOut);
+        final slide = Tween<Offset>(
+          begin: const Offset(0.02, 0.0),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+        return FadeTransition(
+          opacity: fade,
+          child: SlideTransition(position: slide, child: child),
+        );
+      },
     );
   }
-}
-
-class AppStrings {
-  static const String appName = 'VaxGuard';
 }

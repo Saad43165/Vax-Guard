@@ -1,7 +1,13 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
+
+import '../models/history_entry.dart';
 import '../models/vaccine_record.dart';
 import 'sqlite_service.dart';
 
-class DatabaseService {
+class DatabaseService extends ChangeNotifier {
   static DatabaseService? _instance;
   static bool _initialized = false;
   int _totalVaccines = 0;
@@ -19,8 +25,8 @@ class DatabaseService {
   Future<void> initialize() async {
     final db = SQLiteService.instance;
     await db.database;
-    await _refreshStats();
     _initialized = true;
+    await _refreshStats();
   }
 
   Future<void> _refreshStats() async {
@@ -49,6 +55,8 @@ class DatabaseService {
       _pendingVaccines = 0;
       _completionPercentage = 0;
     }
+
+    notifyListeners();
   }
 
   int get totalVaccines => _totalVaccines;
@@ -66,6 +74,7 @@ class DatabaseService {
       'dose_count': 1,
       'vaccination_date': record.vaccinationDate.toIso8601String(),
       'next_dose_date': record.nextDoseDate?.toIso8601String(),
+      'lot_number': record.lotNumber,
       'location': record.clinicName ?? '',
       'provider': record.administeredBy ?? '',
       'is_completed': record.isCompleted ? 1 : 0,
@@ -128,6 +137,7 @@ class DatabaseService {
         'dose_count': 1,
         'vaccination_date': record.vaccinationDate.toIso8601String(),
         'next_dose_date': record.nextDoseDate?.toIso8601String(),
+        'lot_number': record.lotNumber,
         'location': record.clinicName ?? '',
         'provider': record.administeredBy ?? '',
         'is_completed': record.isCompleted ? 1 : 0,
@@ -168,7 +178,184 @@ class DatabaseService {
   Future<void> deleteAllRecords() async {
     final db = SQLiteService.instance;
     await db.delete('vaccine_records');
+    await db.delete('assessment_history');
+    await db.delete('triage_results');
     await _refreshStats();
+  }
+
+  Future<void> saveHealthAssessment({
+    required String title,
+    required String description,
+    required String recommendation,
+    required int score,
+    required List<String> actions,
+  }) async {
+    final db = SQLiteService.instance;
+    final now = DateTime.now().toIso8601String();
+    final riskLevel = title.toUpperCase();
+
+    await db.insert('assessment_history', {
+      'id': const Uuid().v4(),
+      'assessment_type': 'triage',
+      'title': title,
+      'summary': recommendation,
+      'status': _riskStatusFromScore(score),
+      'risk_level': riskLevel,
+      'risk_score': score,
+      'details': description,
+      'metadata_json': jsonEncode({
+        'actions': actions,
+      }),
+      'created_at': now,
+    });
+
+    await db.insert('triage_results', {
+      'symptoms': 'Health assessment',
+      'risk_level': riskLevel,
+      'risk_score': score,
+      'recommendations': [
+        description,
+        recommendation,
+        ...actions,
+      ].join('\n'),
+      'created_at': now,
+    });
+
+    notifyListeners();
+  }
+
+  Future<void> saveAnimalBiteAssessment({
+    required Map<String, String> answers,
+    required String result,
+    String? imagePath,
+    Map<String, dynamic>? extraMetadata,
+  }) async {
+    final db = SQLiteService.instance;
+    final now = DateTime.now().toIso8601String();
+    final riskLevel = _animalBiteRiskLabel(result);
+    final animal = answers['animal']?.trim();
+    final location = answers['location']?.trim();
+
+    await db.insert('assessment_history', {
+      'id': const Uuid().v4(),
+      'assessment_type': 'animal_bite',
+      'title': animal == null || animal.isEmpty
+          ? 'Animal Bite Assessment'
+          : '${_capitalize(animal)} Bite Assessment',
+      'summary': [
+        if (location != null && location.isNotEmpty) location,
+        answers['time'] ?? 'Recent incident',
+      ].join(' • '),
+      'status': riskLevel,
+      'risk_level': riskLevel,
+      'risk_score': _animalBiteRiskScore(result),
+      'details': result,
+      'metadata_json': jsonEncode({
+        'answers': answers,
+        'image_path': imagePath,
+        ...?extraMetadata,
+      }),
+      'created_at': now,
+    });
+
+    notifyListeners();
+  }
+
+  Future<void> saveSymptomCheckerAssessment({
+    required Set<String> selectedSymptoms,
+    required String severity,
+    required int score,
+    required String summary,
+    required List<String> recommendations,
+  }) async {
+    final db = SQLiteService.instance;
+    final now = DateTime.now().toIso8601String();
+    final symptomList = selectedSymptoms.toList()..sort();
+
+    await db.insert('assessment_history', {
+      'id': const Uuid().v4(),
+      'assessment_type': 'symptom_checker',
+      'title': 'Symptom Checker',
+      'summary': summary,
+      'status': _riskStatusFromScore(score),
+      'risk_level': severity,
+      'risk_score': score,
+      'details': 'Severity: $severity',
+      'metadata_json': jsonEncode({
+        'selected_symptoms': symptomList,
+        'selected_count': symptomList.length,
+        'severity': severity,
+        'actions': recommendations,
+      }),
+      'created_at': now,
+    });
+
+    notifyListeners();
+  }
+
+  Future<void> saveDiseaseAssessment({
+    required String assessmentId,
+    required String assessmentName,
+    required String subtitle,
+    required dynamic result,
+    required Map<String, int> answers,
+    required List<dynamic> questions,
+    required List<String> urgentFlags,
+  }) async {
+    final db = SQLiteService.instance;
+    final now = DateTime.now().toIso8601String();
+    final resolvedAnswers = <String, String>{};
+
+    for (final question in questions) {
+      final questionId = question.id as String;
+      final optionIndex = answers[questionId];
+      if (optionIndex == null ||
+          optionIndex < 0 ||
+          optionIndex >= (question.options as List).length) {
+        continue;
+      }
+      resolvedAnswers[questionId] = question.options[optionIndex].label as String;
+    }
+
+    await db.insert('assessment_history', {
+      'id': const Uuid().v4(),
+      'assessment_type': 'disease_assessment',
+      'title': assessmentName,
+      'summary': subtitle,
+      'status': result.level as String,
+      'risk_level': result.level as String,
+      'risk_score': result.score as int,
+      'details': result.summary as String,
+      'metadata_json': jsonEncode({
+        'assessment_id': assessmentId,
+        'assessment_name': assessmentName,
+        'next_step': result.nextStep,
+        'matched_concerns': result.matchedConcerns,
+        'actions': result.actions,
+        'answers': resolvedAnswers,
+        'urgent_flags': urgentFlags,
+      }),
+      'created_at': now,
+    });
+
+    notifyListeners();
+  }
+
+  Future<List<HistoryEntry>> getHistoryEntries() async {
+    final vaccineRecords = await getAllVaccineRecords();
+    final db = SQLiteService.instance;
+    final assessments = await db.query(
+      'assessment_history',
+      orderBy: 'created_at DESC',
+    );
+
+    final history = <HistoryEntry>[
+      ...vaccineRecords.map(HistoryEntry.fromVaccineRecord),
+      ...assessments.map(HistoryEntry.fromAssessmentMap),
+    ];
+
+    history.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return history;
   }
 
   VaccineRecord _vaccineRecordFromMap(Map<String, dynamic> map) {
@@ -199,5 +386,46 @@ class DatabaseService {
       monthlyData[row['month'] as String] = row['count'] as int;
     }
     return monthlyData;
+  }
+
+  Future<Map<String, int>> getAssessmentTypeCounts() async {
+    final db = SQLiteService.instance;
+    final results = await db.rawQuery('''
+      SELECT assessment_type, COUNT(*) as count
+      FROM assessment_history
+      GROUP BY assessment_type
+    ''');
+
+    final counts = <String, int>{};
+    for (final row in results) {
+      final key = (row['assessment_type'] as String?) ?? 'unknown';
+      counts[key] = (row['count'] as int?) ?? 0;
+    }
+    return counts;
+  }
+
+  String _riskStatusFromScore(int score) {
+    if (score >= 70) return 'High';
+    if (score >= 40) return 'Medium';
+    return 'Low';
+  }
+
+  String _animalBiteRiskLabel(String result) {
+    if (result.contains('HIGH RISK')) return 'High Risk';
+    if (result.contains('URGENT')) return 'Urgent';
+    if (result.contains('MODERATE')) return 'Moderate';
+    return 'Low Risk';
+  }
+
+  int _animalBiteRiskScore(String result) {
+    if (result.contains('HIGH RISK')) return 90;
+    if (result.contains('URGENT')) return 70;
+    if (result.contains('MODERATE')) return 40;
+    return 20;
+  }
+
+  String _capitalize(String value) {
+    if (value.isEmpty) return value;
+    return value[0].toUpperCase() + value.substring(1);
   }
 }

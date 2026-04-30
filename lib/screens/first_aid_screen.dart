@@ -93,7 +93,7 @@ class _FirstAidScreenState extends State<FirstAidScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
-      appBar: AppBar(title: const Text('First Aid Guide')),
+      appBar: AppBar(title: const Text('First Aid Guide'), centerTitle: false),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppTheme.spacingMd),
         child: Column(

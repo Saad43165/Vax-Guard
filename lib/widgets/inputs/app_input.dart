@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../core/theme.dart';
 
 class AppTextField extends StatelessWidget {
@@ -40,6 +39,12 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+    final tertiaryColor = isDark ? AppTheme.darkTextTertiary : AppTheme.textTertiary;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -48,10 +53,10 @@ class AppTextField extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               label!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
+                color: labelColor,
               ),
             ),
           ),
@@ -67,44 +72,41 @@ class AppTextField extends StatelessWidget {
           onTap: onTap,
           readOnly: readOnly,
           focusNode: focusNode,
-          style: const TextStyle(
-            fontSize: 15,
-            color: AppTheme.textPrimary,
-          ),
+          style: TextStyle(fontSize: 15, color: cs.onSurface),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(
-              color: AppTheme.textTertiary,
+            hintStyle: TextStyle(
+              color: tertiaryColor,
               fontSize: 14,
             ),
             prefixIcon: prefixIcon != null
-                ? Icon(prefixIcon, color: AppTheme.textSecondary, size: 20)
+                ? Icon(prefixIcon, color: cs.onSurface.withValues(alpha: 0.7), size: 20)
                 : null,
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: enabled ? Colors.white : AppTheme.surfaceVariant,
+            fillColor: enabled ? cs.surface : cs.surfaceContainerHighest,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 14,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              borderSide: const BorderSide(color: AppTheme.border),
+              borderSide: BorderSide(color: borderColor),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              borderSide: const BorderSide(color: AppTheme.border),
+              borderSide: BorderSide(color: borderColor),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              borderSide: const BorderSide(
+              borderSide: BorderSide(
                 color: AppTheme.primary,
                 width: 2,
               ),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              borderSide: const BorderSide(color: AppTheme.danger),
+              borderSide: BorderSide(color: AppTheme.danger),
             ),
           ),
         ),
@@ -129,26 +131,32 @@ class AppSearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+    final tertiaryColor = isDark ? AppTheme.darkTextTertiary : AppTheme.textTertiary;
+    final secondaryColor = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+    
     return Container(
       height: 48,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: borderColor),
       ),
       child: TextField(
         controller: controller,
         onChanged: onChanged,
-        style: const TextStyle(fontSize: 15),
+        style: TextStyle(fontSize: 15, color: cs.onSurface),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(
-            color: AppTheme.textTertiary,
+          hintStyle: TextStyle(
+            color: tertiaryColor,
             fontSize: 14,
           ),
-          prefixIcon: const Icon(
+          prefixIcon: Icon(
             Icons.search_rounded,
-            color: AppTheme.textSecondary,
+            color: secondaryColor,
             size: 20,
           ),
           suffixIcon: controller?.text.isNotEmpty == true
@@ -158,7 +166,7 @@ class AppSearchField extends StatelessWidget {
                     controller?.clear();
                     onClear?.call();
                   },
-                  color: AppTheme.textSecondary,
+                  color: secondaryColor,
                   iconSize: 20,
                 )
               : null,
@@ -193,6 +201,13 @@ class AppDropdownField<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+    final tertiaryColor = isDark ? AppTheme.darkTextTertiary : AppTheme.textTertiary;
+    final textColor = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -201,45 +216,45 @@ class AppDropdownField<T> extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               label!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
+                color: labelColor,
               ),
             ),
           ),
         DropdownButtonFormField<T>(
-          value: value,
+          initialValue: value,
           items: items,
           onChanged: onChanged,
           validator: validator,
           hint: Text(
             hint ?? 'Select',
-            style: const TextStyle(color: AppTheme.textTertiary),
+            style: TextStyle(color: tertiaryColor),
           ),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 15,
-            color: AppTheme.textPrimary,
+            color: textColor,
           ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white,
+            fillColor: cs.surface,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 14,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              borderSide: const BorderSide(color: AppTheme.border),
+              borderSide: BorderSide(color: borderColor),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              borderSide: const BorderSide(color: AppTheme.border),
+              borderSide: BorderSide(color: borderColor),
             ),
           ),
-          icon: const Icon(
+          icon: Icon(
             Icons.keyboard_arrow_down_rounded,
-            color: AppTheme.textSecondary,
+            color: labelColor,
           ),
         ),
       ],
@@ -269,6 +284,12 @@ class AppDateField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+    final tertiaryColor = isDark ? AppTheme.darkTextTertiary : AppTheme.textTertiary;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -277,10 +298,10 @@ class AppDateField extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               label!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
+                color: labelColor,
               ),
             ),
           ),
@@ -300,15 +321,15 @@ class AppDateField extends StatelessWidget {
             height: 52,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cs.surface,
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              border: Border.all(color: AppTheme.border),
+              border: Border.all(color: borderColor),
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.calendar_today_rounded,
-                  color: AppTheme.textSecondary,
+                  color: labelColor,
                   size: 20,
                 ),
                 const SizedBox(width: 12),
@@ -319,8 +340,8 @@ class AppDateField extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 15,
                     color: value != null
-                        ? AppTheme.textPrimary
-                        : AppTheme.textTertiary,
+                        ? cs.onSurface
+                        : tertiaryColor,
                   ),
                 ),
               ],
@@ -348,6 +369,12 @@ class AppTimeField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+    final tertiaryColor = isDark ? AppTheme.darkTextTertiary : AppTheme.textTertiary;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -356,10 +383,10 @@ class AppTimeField extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               label!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
+                color: labelColor,
               ),
             ),
           ),
@@ -377,15 +404,15 @@ class AppTimeField extends StatelessWidget {
             height: 52,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cs.surface,
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              border: Border.all(color: AppTheme.border),
+              border: Border.all(color: borderColor),
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.access_time_rounded,
-                  color: AppTheme.textSecondary,
+                  color: labelColor,
                   size: 20,
                 ),
                 const SizedBox(width: 12),
@@ -396,8 +423,8 @@ class AppTimeField extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 15,
                     color: value != null
-                        ? AppTheme.textPrimary
-                        : AppTheme.textTertiary,
+                        ? cs.onSurface
+                        : tertiaryColor,
                   ),
                 ),
               ],

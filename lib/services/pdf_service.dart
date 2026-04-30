@@ -2,8 +2,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
-import '../models/vaccine_record.dart';
 import '../services/database_service.dart';
+import '../models/history_entry.dart';
 
 class PdfService {
   static PdfService? _instance;
@@ -20,6 +20,19 @@ class PdfService {
     final db = DatabaseService.instance;
     final records = await db.getAllVaccineRecords();
     final pending = await db.getUpcomingVaccines();
+    final history = await db.getHistoryEntries();
+    final assessments = history
+        .where((entry) => entry.type != HistoryEntryType.vaccine)
+        .toList();
+    final urgentAssessments = assessments
+        .where(
+          (e) =>
+              (e.riskScore ?? 0) >= 70 ||
+              e.statusLabel.toLowerCase().contains('urgent') ||
+              e.statusLabel.toLowerCase().contains('high'),
+        )
+        .take(5)
+        .toList();
     final total = db.totalVaccines;
     final completedCount = db.completedVaccines;
     final percentage = db.completionPercentage;
@@ -111,6 +124,60 @@ class PdfService {
           ),
           pw.SizedBox(height: 30),
           pw.Text(
+            'Emergency Summary',
+            style: pw.TextStyle(
+              fontSize: 18,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColor.fromInt(0xFF991B1B),
+            ),
+          ),
+          pw.SizedBox(height: 10),
+          if (urgentAssessments.isEmpty)
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.green50,
+                borderRadius: pw.BorderRadius.circular(8),
+              ),
+              child: pw.Text(
+                'No recent urgent findings in saved assessments.',
+                style: const pw.TextStyle(fontSize: 12),
+              ),
+            )
+          else
+            pw.Column(
+              children: urgentAssessments
+                  .map(
+                    (e) => pw.Container(
+                      width: double.infinity,
+                      margin: const pw.EdgeInsets.only(bottom: 8),
+                      padding: const pw.EdgeInsets.all(10),
+                      decoration: pw.BoxDecoration(
+                        color: PdfColors.red50,
+                        borderRadius: pw.BorderRadius.circular(8),
+                        border: pw.Border.all(color: PdfColors.red200),
+                      ),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            '${_assessmentTypeLabel(e.type)} • ${e.statusLabel}',
+                            style: pw.TextStyle(
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.red800,
+                            ),
+                          ),
+                          pw.SizedBox(height: 4),
+                          pw.Text(e.title, style: const pw.TextStyle(fontSize: 11)),
+                          pw.Text(e.summary, style: const pw.TextStyle(fontSize: 10)),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          pw.SizedBox(height: 24),
+          pw.Text(
             'Vaccination History',
             style: pw.TextStyle(
               fontSize: 18,
@@ -193,6 +260,47 @@ class PdfService {
                   _buildDetailRow('Next Scheduled Doses', pending.length.toString()),
                 ],
               ),
+            ),
+          ],
+          pw.SizedBox(height: 24),
+          pw.Text(
+            'Assessment Summary',
+            style: pw.TextStyle(
+              fontSize: 18,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColor.fromInt(0xFF1E293B),
+            ),
+          ),
+          pw.SizedBox(height: 10),
+          if (assessments.isEmpty)
+            pw.Text(
+              'No assessment records available.',
+              style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey600),
+            )
+          else ...[
+            _buildAssessmentTypeSection(
+              'Health Assessments',
+              assessments.where((e) => e.type == HistoryEntryType.triage).toList(),
+              dateFormat,
+            ),
+            _buildAssessmentTypeSection(
+              'Animal Bite Assessments',
+              assessments.where((e) => e.type == HistoryEntryType.animalBite).toList(),
+              dateFormat,
+            ),
+            _buildAssessmentTypeSection(
+              'Symptom Checks',
+              assessments
+                  .where((e) => e.type == HistoryEntryType.symptomChecker)
+                  .toList(),
+              dateFormat,
+            ),
+            _buildAssessmentTypeSection(
+              'Disease-Specific Checks',
+              assessments
+                  .where((e) => e.type == HistoryEntryType.diseaseAssessment)
+                  .toList(),
+              dateFormat,
             ),
           ],
         ],
@@ -313,6 +421,73 @@ class PdfService {
     await Printing.layoutPdf(
       onLayout: (format) => pdf.save(),
       name: 'VaxGuard Report',
+    );
+  }
+
+  String _assessmentTypeLabel(HistoryEntryType type) {
+    switch (type) {
+      case HistoryEntryType.triage:
+        return 'General';
+      case HistoryEntryType.animalBite:
+        return 'Animal Bite';
+      case HistoryEntryType.symptomChecker:
+        return 'Symptom';
+      case HistoryEntryType.diseaseAssessment:
+        return 'Disease';
+      case HistoryEntryType.vaccine:
+        return 'Vaccine';
+    }
+  }
+
+  pw.Widget _buildAssessmentTypeSection(
+    String title,
+    List<HistoryEntry> items,
+    DateFormat format,
+  ) {
+    if (items.isEmpty) {
+      return pw.Container(
+        margin: const pw.EdgeInsets.only(bottom: 10),
+        child: pw.Text(
+          '$title: none',
+          style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600),
+        ),
+      );
+    }
+    return pw.Container(
+      margin: const pw.EdgeInsets.only(bottom: 10),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            title,
+            style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 6),
+          ...items.take(5).map(
+            (entry) => pw.Container(
+              margin: const pw.EdgeInsets.only(bottom: 6),
+              padding: const pw.EdgeInsets.all(8),
+              decoration: pw.BoxDecoration(
+                borderRadius: pw.BorderRadius.circular(6),
+                border: pw.Border.all(color: PdfColors.grey300),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    '${entry.title} • ${entry.statusLabel}',
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                  ),
+                  pw.Text(
+                    '${entry.summary}\nDate: ${format.format(entry.createdAt)}${entry.riskScore != null ? ' • Score ${entry.riskScore}%' : ''}',
+                    style: const pw.TextStyle(fontSize: 9),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

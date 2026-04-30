@@ -18,9 +18,11 @@ class AppConstants {
   static const String settingsRoute = '/settings';
   static const String healthTipsRoute = '/health-tips';
   static const String symptomCheckerRoute = '/symptom-checker';
+  static const String assessmentsRoute = '/assessments';
   static const String pdfViewRoute = '/pdf-view';
   static const String medicineReminderRoute = '/medicine-reminder';
   static const String profileRoute = '/profile';
+  static const String emergencyModeRoute = '/emergency-mode';
 
   // Notification IDs
   static const int vaccineReminderNotificationId = 1001;

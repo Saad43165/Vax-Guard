@@ -26,6 +26,14 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>VaxGuard uses your location to show nearby hospitals and urgent care options.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>VaxGuard uses your location to help you find nearby hospitals when needed.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>VaxGuard uses your camera to capture wound photos for animal bite assessment context.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>VaxGuard lets you select wound photos for animal bite assessment context.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

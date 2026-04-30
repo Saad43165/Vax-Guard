@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../core/theme.dart';
-import '../../utils/app_constants.dart';
+import '../core/theme.dart';
+import '../services/database_service.dart';
+import '../utils/app_constants.dart';
 
 class SymptomCheckerScreen extends StatefulWidget {
   const SymptomCheckerScreen({super.key});
@@ -34,6 +35,7 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: const Text('Symptom Checker'),
+        centerTitle: false,
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -286,12 +288,54 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
     );
   }
 
-  void _analyzeSymptoms() {
+  Future<void> _analyzeSymptoms() async {
+    if (_severity == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select symptom severity first.'),
+        ),
+      );
+      return;
+    }
+
     final result = _getAssessmentResult();
+    await DatabaseService.instance.saveSymptomCheckerAssessment(
+      selectedSymptoms: _selectedSymptoms,
+      severity: result.severity,
+      score: result.score,
+      summary: result.message,
+      recommendations: result.recommendations,
+    );
+    if (!mounted) return;
     _showResultDialog(result);
   }
 
   _SymptomResult _getAssessmentResult() {
+    if (_selectedSymptoms.isEmpty) {
+      return const _SymptomResult(
+        severity: 'Insufficient Input',
+        score: 0,
+        message:
+            'No relevant symptoms were selected, so this check cannot suggest a disease pattern.',
+        recommendations: [
+          'Select symptoms that best match your current condition.',
+          'If symptoms are severe, seek medical care directly.',
+        ],
+      );
+    }
+
+    if (_severity == null) {
+      return const _SymptomResult(
+        severity: 'Insufficient Input',
+        score: 0,
+        message:
+            'Severity was not selected, so this result may be unreliable.',
+        recommendations: [
+          'Choose Mild, Moderate, or Severe and run the check again.',
+        ],
+      );
+    }
+
     int score = 0;
     final hasHighRisk = _selectedSymptoms.contains('shortness_breath') ||
         _selectedSymptoms.contains('chest_pain');
@@ -312,8 +356,9 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
           ? 'Based on your symptoms, we recommend seeking medical attention soon.'
           : score > 40
               ? 'Your symptoms may require medical attention. Consider consulting a healthcare provider.'
-              : 'Your symptoms appear mild. Rest and monitor your condition.',
+              : 'Your symptoms currently suggest low concern and no clear disease-specific warning pattern.',
       recommendations: _getRecommendations(score),
+      drivers: _selectedSymptoms.take(3).map((s) => s.replaceAll('_', ' ')).toList(),
     );
   }
 
@@ -459,6 +504,29 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
                             ],
                           ),
                         )),
+                    if (result.drivers.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Why this result:',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ...result.drivers.map(
+                        (driver) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.circle, size: 8, color: AppTheme.primary),
+                              const SizedBox(width: 10),
+                              Expanded(child: Text(driver)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
@@ -532,11 +600,13 @@ class _SymptomResult {
   final int score;
   final String message;
   final List<String> recommendations;
+  final List<String> drivers;
 
   const _SymptomResult({
     required this.severity,
     required this.score,
     required this.message,
     required this.recommendations,
+    this.drivers = const [],
   });
 }

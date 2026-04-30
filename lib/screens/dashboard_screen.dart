@@ -48,6 +48,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: const Text('Health Dashboard'),
+        centerTitle: false,
         actions: [
           IconButton(
             onPressed: () => setState(() {}),

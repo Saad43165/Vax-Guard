@@ -1,7 +1,5 @@
-import 'package:sqflite/sqflite.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:sqflite/sqflite.dart';
 
 class SQLiteService {
   static SQLiteService? _instance;
@@ -25,7 +23,7 @@ class SQLiteService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -41,6 +39,7 @@ class SQLiteService {
         dose_count INTEGER DEFAULT 1,
         vaccination_date TEXT NOT NULL,
         next_dose_date TEXT,
+        lot_number TEXT,
         location TEXT,
         provider TEXT,
         is_completed INTEGER DEFAULT 0,
@@ -140,12 +139,48 @@ class SQLiteService {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE assessment_history (
+        id TEXT PRIMARY KEY,
+        assessment_type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        status TEXT NOT NULL,
+        risk_level TEXT,
+        risk_score INTEGER,
+        details TEXT,
+        metadata_json TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
     await _insertDefaultData(db);
     debugPrint('SQLite database created successfully');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     debugPrint('Upgrading database from version $oldVersion to $newVersion');
+
+    if (oldVersion < 2) {
+      await db.execute(
+        'ALTER TABLE vaccine_records ADD COLUMN lot_number TEXT',
+      );
+
+      await db.execute('''
+        CREATE TABLE assessment_history (
+          id TEXT PRIMARY KEY,
+          assessment_type TEXT NOT NULL,
+          title TEXT NOT NULL,
+          summary TEXT NOT NULL,
+          status TEXT NOT NULL,
+          risk_level TEXT,
+          risk_score INTEGER,
+          details TEXT,
+          metadata_json TEXT,
+          created_at TEXT NOT NULL
+        )
+      ''');
+    }
   }
 
   Future<void> _insertDefaultData(Database db) async {

@@ -50,18 +50,17 @@ class _VaccineScheduleScreenState extends State<VaccineScheduleScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: const Text('Vaccine Schedule'),
-        backgroundColor: AppTheme.primary,
-        foregroundColor: Colors.white,
+        centerTitle: false,
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white60,
-          indicatorColor: Colors.white,
+          labelColor: Theme.of(context).colorScheme.primary,
+          unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+          indicatorColor: Theme.of(context).colorScheme.primary,
           tabs: [
             Tab(text: 'All (${_allRecords.length})'),
             Tab(text: 'Completed (${_completedRecords.length})'),
@@ -92,13 +91,14 @@ class _VaccineScheduleScreenState extends State<VaccineScheduleScreen>
   }
 
   Widget _buildStatsBar() {
+    final cs = Theme.of(context).colorScheme;
     final total = _allRecords.length;
     final completed = _completedRecords.length;
     final progress = total > 0 ? completed / total : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.white,
+      color: cs.surface,
       child: Column(
         children: [
           Row(
@@ -358,13 +358,14 @@ class _AddVaccineSheetState extends State<_AddVaccineSheet> {
   }
 
   Widget _buildVaccineDropdown() {
+    final cs = Theme.of(context).colorScheme;
     return DropdownButtonFormField<String>(
-      value: _selectedVaccine,
+      initialValue: _selectedVaccine,
       decoration: InputDecoration(
         labelText: 'Vaccine Name *',
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: cs.surface,
       ),
       hint: const Text('Select vaccine'),
       items: AppConstants.commonVaccines.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
@@ -374,13 +375,14 @@ class _AddVaccineSheetState extends State<_AddVaccineSheet> {
   }
 
   Widget _buildDoseDropdown() {
+    final cs = Theme.of(context).colorScheme;
     return DropdownButtonFormField<String>(
-      value: _selectedDose,
+      initialValue: _selectedDose,
       decoration: InputDecoration(
         labelText: 'Dose Number',
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: cs.surface,
       ),
       hint: const Text('Select dose (optional)'),
       items: AppConstants.doseNumbers.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
@@ -389,6 +391,7 @@ class _AddVaccineSheetState extends State<_AddVaccineSheet> {
   }
 
   Widget _buildDatePicker({required String label, DateTime? date, required Function(DateTime) onChanged, bool allowNull = false}) {
+    final cs = Theme.of(context).colorScheme;
     DateTime effectiveDate = date ?? DateTime.now();
     return GestureDetector(
       onTap: () async {
@@ -402,7 +405,7 @@ class _AddVaccineSheetState extends State<_AddVaccineSheet> {
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: AppTheme.border), borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(color: cs.surface, border: Border.all(color: AppTheme.border), borderRadius: BorderRadius.circular(12)),
         child: Row(
           children: [
             const Icon(Icons.calendar_today, size: 18, color: AppTheme.textSecondary),
@@ -424,10 +427,12 @@ class _AddVaccineSheetState extends State<_AddVaccineSheet> {
   }
 
   Widget _buildTextField({required TextEditingController controller, required String label, String? hint, int maxLines = 1, String? Function(String?)? validator}) {
+    final cs = Theme.of(context).colorScheme;
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
-      decoration: InputDecoration(labelText: label, hintText: hint, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: Colors.white),
+      style: TextStyle(color: cs.onSurface),
+      decoration: InputDecoration(labelText: label, hintText: hint, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: cs.surface),
       validator: validator,
     );
   }

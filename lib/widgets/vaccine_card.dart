@@ -17,24 +17,32 @@ class VaccineCard extends StatelessWidget {
     this.onMarkComplete,
   }) : super(key: key);
 
-  @override
+@override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppTheme.darkSurface : AppTheme.surface;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+    final tertiaryColor = isDark ? AppTheme.darkTextTertiary : AppTheme.textTertiary;
+    final secondaryColor = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+    final primaryTextColor = isDark ? AppTheme.darkTextPrimary : AppTheme.textPrimary;
+    final surfaceVariantColor = isDark ? AppTheme.darkSurfaceVariant : AppTheme.surfaceVariant;
+    
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: surfaceColor,
           borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-          border: Border.all(color: AppTheme.border),
+          border: Border.all(color: borderColor),
           boxShadow: AppTheme.shadowMd,
         ),
-        child: Column(
+child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(context),
-            _buildBody(context),
-            if (onMarkComplete != null || onDelete != null) _buildActions(),
+            _buildBody(context, tertiaryColor: tertiaryColor, primaryTextColor: primaryTextColor, secondaryColor: secondaryColor),
+            if (onMarkComplete != null || onDelete != null) _buildActions(context),
           ],
         ),
       ),
@@ -142,7 +150,10 @@ class VaccineCard extends StatelessWidget {
   }
 
   // ─── Body ─────────────────────────────────────────────────────────────────
-  Widget _buildBody(BuildContext context) {
+  Widget _buildBody(BuildContext context, {required Color tertiaryColor, required Color primaryTextColor, required Color secondaryColor}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+    
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -152,35 +163,43 @@ class VaccineCard extends StatelessWidget {
             label: 'Vaccination Date',
             value: DateFormat('MMMM d, yyyy').format(record.vaccinationDate),
             iconColor: AppTheme.primary,
+            tertiaryColor: tertiaryColor,
+            primaryTextColor: primaryTextColor,
           ),
-          _divider(),
+          _divider(borderColor: borderColor),
           _infoRow(
             icon: Icons.tag_rounded,
             label: 'Lot Number',
             value: record.lotNumber,
             iconColor: AppTheme.secondary,
+            tertiaryColor: tertiaryColor,
+            primaryTextColor: primaryTextColor,
           ),
           if (record.clinicName != null && record.clinicName!.isNotEmpty) ...[
-            _divider(),
+            _divider(borderColor: borderColor),
             _infoRow(
               icon: Icons.local_hospital_rounded,
               label: 'Clinic',
               value: record.clinicName!,
               iconColor: AppTheme.purple,
+              tertiaryColor: tertiaryColor,
+              primaryTextColor: primaryTextColor,
             ),
           ],
           if (record.administeredBy != null &&
               record.administeredBy!.isNotEmpty) ...[
-            _divider(),
+            _divider(borderColor: borderColor),
             _infoRow(
               icon: Icons.person_rounded,
               label: 'Administered By',
               value: record.administeredBy!,
-              iconColor: AppTheme.textSecondary,
+              iconColor: secondaryColor,
+              tertiaryColor: tertiaryColor,
+              primaryTextColor: primaryTextColor,
             ),
           ],
           if (record.nextDoseDate != null) ...[
-            _divider(),
+            _divider(borderColor: borderColor),
             _infoRow(
               icon: Icons.notifications_active_rounded,
               label: 'Next Dose',
@@ -188,15 +207,19 @@ class VaccineCard extends StatelessWidget {
               iconColor: AppTheme.warning,
               valueColor: AppTheme.warning,
               highlighted: true,
+              tertiaryColor: tertiaryColor,
+              primaryTextColor: primaryTextColor,
             ),
           ],
           if (record.notes != null && record.notes!.isNotEmpty) ...[
-            _divider(),
+            _divider(borderColor: borderColor),
             _infoRow(
               icon: Icons.notes_rounded,
               label: 'Notes',
               value: record.notes!,
-              iconColor: AppTheme.textTertiary,
+              iconColor: tertiaryColor,
+              tertiaryColor: tertiaryColor,
+              primaryTextColor: primaryTextColor,
             ),
           ],
         ],
@@ -204,9 +227,9 @@ class VaccineCard extends StatelessWidget {
     );
   }
 
-  Widget _divider() => const Padding(
-    padding: EdgeInsets.symmetric(vertical: 6),
-    child: Divider(height: 1, color: AppTheme.border),
+Widget _divider({required Color borderColor}) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Divider(height: 1, color: borderColor),
   );
 
   Widget _infoRow({
@@ -216,6 +239,8 @@ class VaccineCard extends StatelessWidget {
     required Color iconColor,
     Color? valueColor,
     bool highlighted = false,
+    required Color tertiaryColor,
+    required Color primaryTextColor,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,10 +261,10 @@ class VaccineCard extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
-                  color: AppTheme.textTertiary,
+                  color: tertiaryColor,
                   letterSpacing: 0.3,
                 ),
               ),
@@ -249,7 +274,7 @@ class VaccineCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: highlighted ? FontWeight.w600 : FontWeight.w500,
-                  color: valueColor ?? AppTheme.textPrimary,
+                  color: valueColor ?? primaryTextColor,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -261,14 +286,18 @@ class VaccineCard extends StatelessWidget {
     );
   }
 
-  // ─── Actions ──────────────────────────────────────────────────────────────
-  Widget _buildActions() {
+// ─── Actions ──────────────────────────────────────────────────────────────
+  Widget _buildActions(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+    final surfaceVariantColor = isDark ? AppTheme.darkSurfaceVariant : AppTheme.surfaceVariant;
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: const BoxDecoration(
-        color: AppTheme.surfaceVariant,
-        border: Border(top: BorderSide(color: AppTheme.border)),
-        borderRadius: BorderRadius.vertical(
+      decoration: BoxDecoration(
+        color: surfaceVariantColor,
+        border: Border(top: BorderSide(color: borderColor)),
+        borderRadius: const BorderRadius.vertical(
           bottom: Radius.circular(AppTheme.radiusLg),
         ),
       ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../core/theme.dart';
+import '../services/database_service.dart';
 import '../services/triage_service.dart';
+import '../utils/app_constants.dart';
 import '../utils/app_strings.dart';
 
 class TriageQuizScreen extends StatefulWidget {
@@ -108,11 +110,21 @@ class _TriageQuizScreenState extends State<TriageQuizScreen>
     }
   }
 
-  void _submitQuiz() {
+  Future<void> _submitQuiz() async {
     final result = TriageService.calculateRisk(_answers);
+    await DatabaseService.instance.saveHealthAssessment(
+      title: result.title,
+      description: result.description,
+      recommendation: result.recommendation,
+      score: result.score,
+      actions: result.actions,
+    );
+
+    if (!mounted) return;
+
     Navigator.pushReplacementNamed(
       context,
-      '/triage-result',
+      AppConstants.triageResultRoute,
       arguments: result,
     );
   }
@@ -127,6 +139,7 @@ class _TriageQuizScreenState extends State<TriageQuizScreen>
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: const Text(AppStrings.triageTitle),
+        centerTitle: false,
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,

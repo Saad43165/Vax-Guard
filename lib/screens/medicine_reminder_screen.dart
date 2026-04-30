@@ -45,11 +45,12 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
                 'Medicine Reminders',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
               ),
+              titlePadding: const EdgeInsetsDirectional.only(start: 24, bottom: 16),
               background: Container(
                 decoration: const BoxDecoration(gradient: AppTheme.purpleGradient),
                 child: SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 52),
+                    padding: const EdgeInsets.fromLTRB(24, 16, 20, 52),
                     child: Row(
                       children: [
                         Container(
@@ -120,28 +121,32 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
               sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, i) => _ReminderCard(
-                    reminder: _reminders[i],
-                    onToggle: (active) async {
-                      await MedicineReminderService.instance.toggleReminder(_reminders[i].id!, active);
-                      _loadReminders();
-                    },
-                    onDelete: () async {
-                      await MedicineReminderService.instance.deleteReminder(_reminders[i].id!);
-                      _loadReminders();
+                delegate: SliverChildListDelegate([
+                  _buildOverviewCard(context),
+                  const SizedBox(height: 14),
+                  ...List.generate(_reminders.length, (i) {
+                    return _ReminderCard(
+                      reminder: _reminders[i],
+                      onToggle: (active) async {
+                        await MedicineReminderService.instance.toggleReminder(_reminders[i].id!, active);
+                        _loadReminders();
+                      },
+                      onDelete: () async {
+                        await MedicineReminderService.instance.deleteReminder(_reminders[i].id!);
+                        _loadReminders();
+                      if (!context.mounted) return;
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Reminder for "${_reminders[i].medicineName}" deleted'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  childCount: _reminders.length,
-                ),
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Reminder for "${_reminders[i].medicineName}" deleted'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
+                    );
+                  }),
+                ]),
               ),
             ),
         ],
@@ -172,6 +177,37 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
           _loadReminders();
         },
       ),
+    );
+  }
+
+  Widget _buildOverviewCard(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final active = _reminders.where((r) => r.isActive).length;
+    final paused = _reminders.length - active;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.15)),
+        boxShadow: AppTheme.shadowSm,
+      ),
+      child: Row(
+        children: [
+          Expanded(child: _miniStat('Total', _reminders.length.toString(), AppTheme.primary)),
+          Expanded(child: _miniStat('Active', active.toString(), AppTheme.success)),
+          Expanded(child: _miniStat('Paused', paused.toString(), AppTheme.warning)),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniStat(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color)),
+        Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+      ],
     );
   }
 }
@@ -271,7 +307,7 @@ class _ReminderCard extends StatelessWidget {
                 Switch(
                   value: isActive,
                   onChanged: onToggle,
-                  activeColor: AppTheme.purple,
+                  activeThumbColor: AppTheme.purple,
                 ),
                 IconButton(
                   onPressed: () => _confirmDelete(context),
@@ -424,7 +460,7 @@ class _AddReminderSheetState extends State<_AddReminderSheet> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _frequency,
+                initialValue: _frequency,
                 decoration: const InputDecoration(
                   labelText: 'Frequency',
                   prefixIcon: Icon(Icons.repeat_rounded),

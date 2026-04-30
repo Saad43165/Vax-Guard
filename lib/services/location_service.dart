@@ -26,6 +26,24 @@ class Hospital {
   });
 }
 
+class LocationLookupResult {
+  final Position? position;
+  final String? message;
+  final bool serviceDisabled;
+  final bool permissionDenied;
+  final bool permissionDeniedForever;
+
+  const LocationLookupResult({
+    this.position,
+    this.message,
+    this.serviceDisabled = false,
+    this.permissionDenied = false,
+    this.permissionDeniedForever = false,
+  });
+
+  bool get hasLocation => position != null;
+}
+
 class LocationService {
   static LocationService? _instance;
   static Position? _currentPosition;
@@ -39,40 +57,58 @@ class LocationService {
 
   Position? get currentPosition => _currentPosition;
 
-  Future<Position?> getCurrentPosition() async {
+  Future<LocationLookupResult> getCurrentLocationDetails() async {
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        debugPrint('Location services are disabled.');
-        return null;
+        return const LocationLookupResult(
+          serviceDisabled: true,
+          message: 'Turn on location services to find hospitals near you.',
+        );
       }
 
-      LocationPermission permission = await Geolocator.checkPermission();
+      var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          debugPrint('Location permissions denied.');
-          return null;
-        }
+      }
+
+      if (permission == LocationPermission.denied) {
+        return const LocationLookupResult(
+          permissionDenied: true,
+          message: 'Location permission is needed to use your current position.',
+        );
       }
 
       if (permission == LocationPermission.deniedForever) {
-        debugPrint('Location permissions permanently denied.');
-        return null;
+        return const LocationLookupResult(
+          permissionDeniedForever: true,
+          message: 'Location permission is permanently denied. Open app settings to enable it.',
+        );
       }
 
-      return await Geolocator.getCurrentPosition(
+      final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
         timeLimit: const Duration(seconds: 15),
-      ).then((pos) {
-        _currentPosition = pos;
-        return pos;
-      });
+      );
+      _currentPosition = position;
+
+      return LocationLookupResult(position: position);
     } catch (e) {
       debugPrint('Error getting location: $e');
-      return null;
+      return const LocationLookupResult(
+        message: 'Unable to determine your current location right now.',
+      );
     }
   }
+
+  Future<Position?> getCurrentPosition() async {
+    final result = await getCurrentLocationDetails();
+    return result.position;
+  }
+
+  Future<bool> openLocationSettings() => Geolocator.openLocationSettings();
+
+  Future<bool> openAppSettings() => Geolocator.openAppSettings();
 
   Future<List<Hospital>> getNearbyHospitals({
     double? latitude,

@@ -89,6 +89,19 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         child: SafeArea(
           child: Column(
             children: [
+              const SizedBox(height: 18),
+              Align(
+                alignment: Alignment.topRight,
+                child: Container(
+                  margin: const EdgeInsets.only(right: 20),
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
+                ),
+              ),
               const Spacer(flex: 2),
               _buildLogo(),
               const Spacer(flex: 1),

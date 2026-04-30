@@ -74,12 +74,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: () => Navigator.pop(context),
             ),
             flexibleSpace: FlexibleSpaceBar(
-              title: const Text('Settings', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+              title: const Text('Settings', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.3)),
               background: Container(
                 decoration: const BoxDecoration(gradient: AppTheme.deepBlueGradient),
                 child: SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 52),
+                    padding: const EdgeInsets.fromLTRB(24, 16, 20, 52),
                     child: Row(
                       children: [
                         Container(
@@ -97,6 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
+              titlePadding: const EdgeInsetsDirectional.only(start: 24, bottom: 16),
             ),
           ),
           SliverToBoxAdapter(
@@ -147,7 +148,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           final prefs = await SharedPreferences.getInstance();
                           await prefs.setBool('notifications_enabled', granted);
                           if (mounted) setState(() => _notificationsEnabled = granted);
-                          if (!granted && mounted) {
+                          if (!granted && context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Notification permission denied')),
                             );
@@ -465,7 +466,7 @@ class _SwitchTile extends StatelessWidget {
               ],
             ),
           ),
-          Switch(value: value, onChanged: onChanged, activeColor: iconColor),
+          Switch(value: value, onChanged: onChanged, activeThumbColor: iconColor),
         ],
       ),
     );

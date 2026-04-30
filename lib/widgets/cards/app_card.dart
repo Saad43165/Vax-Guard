@@ -25,15 +25,19 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppTheme.darkSurface : AppTheme.surface;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+    
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: margin,
         padding: padding ?? const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color ?? Colors.white,
+          color: color ?? cardColor,
           borderRadius: BorderRadius.circular(borderRadius ?? AppTheme.radiusLg),
-          border: hasBorder ? Border.all(color: AppTheme.border) : null,
+          border: hasBorder ? Border.all(color: borderColor) : null,
           boxShadow: hasShadow ? AppTheme.shadowSm : null,
         ),
         child: child,
@@ -134,6 +138,9 @@ class AppListTileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+    
     return Column(
       children: [
         GestureDetector(
@@ -166,7 +173,7 @@ class AppListTileCard extends StatelessWidget {
         if (showDivider)
           Divider(
             height: 1,
-            color: AppTheme.border,
+            color: borderColor,
             indent: leading != null ? 72 : 16,
           ),
       ],
@@ -196,6 +203,11 @@ class AppInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondaryColor = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+    final primaryTextColor = isDark ? AppTheme.darkTextPrimary : AppTheme.textPrimary;
+    final tertiaryColor = isDark ? AppTheme.darkTextTertiary : AppTheme.textTertiary;
+    
     return AppCard(
       onTap: onTap,
       child: Row(
@@ -217,9 +229,9 @@ class AppInfoCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: AppTheme.textSecondary,
+                    color: secondaryColor,
                   ),
                 ),
                 if (value != null)
@@ -228,15 +240,15 @@ class AppInfoCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: valueColor ?? AppTheme.textPrimary,
+                      color: valueColor ?? primaryTextColor,
                     ),
                   ),
                 if (subtitle != null)
                   Text(
                     subtitle!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.textTertiary,
+                      color: tertiaryColor,
                     ),
                   ),
               ],
@@ -266,6 +278,9 @@ class AppStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondaryColor = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+    
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.all(16),
@@ -285,9 +300,9 @@ class AppStatCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
-              color: AppTheme.textSecondary,
+              color: secondaryColor,
             ),
           ),
         ],

@@ -1,3 +1,4 @@
+import '../utils/app_constants.dart';
 class TriageQuestion {
   final String id;
   final String question;
@@ -34,6 +35,8 @@ class TriageResult {
   final String recommendation;
   final List<String> actions;
   final String emoji;
+  final bool isInputInsufficient;
+  final List<String> drivers;
 
   const TriageResult({
     required this.level,
@@ -43,6 +46,8 @@ class TriageResult {
     required this.recommendation,
     required this.actions,
     required this.emoji,
+    this.isInputInsufficient = false,
+    this.drivers = const [],
   });
 }
 
@@ -100,15 +105,64 @@ class TriageService {
   ];
 
   static TriageResult calculateRisk(Map<String, int> answers) {
-    int totalScore = 0;
-    for (final questionId in answers.keys) {
-      final question = questions.firstWhere(
-        (q) => q.id == questionId,
-        orElse: () => questions[0],
+    if (answers.length < questions.length) {
+      return const TriageResult(
+        level: RiskLevel.low,
+        score: 0,
+        emoji: 'ℹ️',
+        title: 'Insufficient Input',
+        description:
+            'Please answer all triage questions to get a reliable risk result.',
+        recommendation: 'Complete all questions before submitting.',
+        actions: [
+          'Review each question and select one option.',
+          'Submit again to generate a full assessment.',
+        ],
+        isInputInsufficient: true,
       );
-      final optionIndex = answers[questionId]!;
+    }
+
+    int totalScore = 0;
+    final drivers = <String>[];
+    for (final question in questions) {
+      final optionIndex = answers[question.id];
+      if (optionIndex == null) {
+        return const TriageResult(
+          level: RiskLevel.low,
+          score: 0,
+          emoji: 'ℹ️',
+          title: 'Insufficient Input',
+          description:
+              'One or more triage answers are missing, so risk cannot be estimated yet.',
+          recommendation: 'Complete all questions before submitting.',
+          actions: [
+            'Go back and answer the missing questions.',
+            'Submit again to receive your assessment.',
+          ],
+          isInputInsufficient: true,
+        );
+      }
       if (optionIndex >= 0 && optionIndex < question.options.length) {
-        totalScore += question.options[optionIndex].score;
+        final selected = question.options[optionIndex];
+        totalScore += selected.score;
+        if (selected.score >= 30) {
+          drivers.add('${question.category}: ${selected.text}');
+        }
+      } else {
+        return const TriageResult(
+          level: RiskLevel.low,
+          score: 0,
+          emoji: '⚠️',
+          title: 'Invalid Input',
+          description:
+              'An invalid answer was detected for one of the triage questions.',
+          recommendation: 'Retake the triage quiz using the listed options only.',
+          actions: [
+            'Restart the assessment.',
+            'Select one listed option per question.',
+          ],
+          isInputInsufficient: true,
+        );
       }
     }
 
@@ -116,11 +170,15 @@ class TriageService {
     const maxPossibleScore = 100 + 60 + 50 + 40; // 250
     final normalizedScore = ((totalScore / maxPossibleScore) * 100).round();
 
-    return _buildResult(normalizedScore, totalScore);
+    return _buildResult(normalizedScore, totalScore, drivers);
   }
 
-  static TriageResult _buildResult(int normalizedScore, int rawScore) {
-    if (normalizedScore < 15) {
+  static TriageResult _buildResult(
+    int normalizedScore,
+    int rawScore,
+    List<String> drivers,
+  ) {
+    if (normalizedScore < AppConstants.lowRiskThreshold) {
       return TriageResult(
         level: RiskLevel.low,
         score: normalizedScore,
@@ -135,8 +193,9 @@ class TriageService {
           'Monitor for any new symptoms',
           'Maintain a healthy lifestyle',
         ],
+        drivers: drivers,
       );
-    } else if (normalizedScore < 40) {
+    } else if (normalizedScore < AppConstants.mediumRiskThreshold) {
       return TriageResult(
         level: RiskLevel.medium,
         score: normalizedScore,
@@ -152,8 +211,9 @@ class TriageService {
           'Avoid contact with vulnerable individuals',
           'Wear a mask in public',
         ],
+        drivers: drivers,
       );
-    } else if (normalizedScore < 70) {
+    } else if (normalizedScore < AppConstants.highRiskThreshold) {
       return TriageResult(
         level: RiskLevel.high,
         score: normalizedScore,
@@ -170,6 +230,7 @@ class TriageService {
           'Document your symptoms',
           'Follow healthcare provider instructions',
         ],
+        drivers: drivers,
       );
     } else {
       return TriageResult(
@@ -188,6 +249,7 @@ class TriageService {
           'Inform someone of your condition',
           'Bring your medical history',
         ],
+        drivers: drivers,
       );
     }
   }

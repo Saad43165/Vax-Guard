@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../services/triage_service.dart';
 import '../utils/app_constants.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:intl/intl.dart';
 import '../widgets/custom_button.dart';
 
 class TriageResultScreen extends StatefulWidget {
@@ -93,7 +95,7 @@ class _TriageResultScreenState extends State<TriageResultScreen>
 
     if (result == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Result')),
+        appBar: AppBar(title: const Text('Result'), centerTitle: false),
         body: const Center(child: Text('No result available')),
       );
     }
@@ -188,6 +190,10 @@ class _TriageResultScreenState extends State<TriageResultScreen>
                     _buildDescriptionCard(result),
                     const SizedBox(height: 20),
                     _buildActionsCard(result, riskColor),
+                    if (result.drivers.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      _buildDriversCard(result, riskColor),
+                    ],
                     const SizedBox(height: 20),
                     _buildBottomActions(context, result),
                   ],
@@ -204,7 +210,7 @@ class _TriageResultScreenState extends State<TriageResultScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppTheme.shadowMd,
       ),
@@ -260,7 +266,7 @@ class _TriageResultScreenState extends State<TriageResultScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppTheme.shadowMd,
       ),
@@ -293,7 +299,7 @@ class _TriageResultScreenState extends State<TriageResultScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppTheme.shadowMd,
       ),
@@ -345,17 +351,37 @@ class _TriageResultScreenState extends State<TriageResultScreen>
   }
 
   Widget _buildBottomActions(BuildContext context, TriageResult result) {
+    final isInsufficient = result.isInputInsufficient;
     return Column(
       children: [
-        if (result.level == RiskLevel.critical || result.level == RiskLevel.high)
+        if (!isInsufficient &&
+            (result.level == RiskLevel.critical || result.level == RiskLevel.high))
           CustomButton(
             label: '🏥 Find Nearby Hospital',
             onPressed: () => Navigator.pushNamed(context, AppConstants.hospitalMapRoute),
             variant: ButtonVariant.danger,
           ),
+        if (!isInsufficient) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: () => _shareResult(result),
+              icon: const Icon(Icons.share_rounded, size: 20),
+              label: const Text('Share Result'),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: AppTheme.primary),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         CustomButton(
-          label: 'Retake Assessment',
+          label: isInsufficient ? 'Complete Assessment' : 'Retake Assessment',
           onPressed: () => Navigator.pushReplacementNamed(context, AppConstants.triageRoute),
           variant: ButtonVariant.outlined,
         ),
@@ -370,6 +396,60 @@ class _TriageResultScreenState extends State<TriageResultScreen>
           variant: ButtonVariant.secondary,
         ),
       ],
+    );
+  }
+
+  void _shareResult(TriageResult result) {
+    final date = DateFormat('MMMM dd, yyyy').format(DateTime.now());
+    final text = '''
+🦠 VaxGuard Triage Result
+
+📊 Risk Level: ${result.level.name.toUpperCase()}
+📝 Summary: ${result.description}
+📅 Date: $date
+
+${result.level == RiskLevel.critical || result.level == RiskLevel.high ? '⚠️ Recommendation: Seek immediate medical attention!' : '✅ Monitor your symptoms.'}
+
+Shared from VaxGuard App
+''';
+    Share.share(text, subject: 'My Health Assessment');
+  }
+
+  Widget _buildDriversCard(TriageResult result, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppTheme.shadowMd,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Why This Result',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...result.drivers.map(
+            (d) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.fiber_manual_record, size: 10, color: color),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(d)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

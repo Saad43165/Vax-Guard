@@ -54,6 +54,7 @@ class _HealthTipsScreenState extends State<HealthTipsScreen> {
             foregroundColor: Colors.white,
             flexibleSpace: FlexibleSpaceBar(
               title: const Text('Health Tips', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              titlePadding: const EdgeInsetsDirectional.only(start: 24, bottom: 16),
               background: Container(
                 decoration: const BoxDecoration(gradient: AppTheme.successGradient),
               ),
@@ -156,12 +157,13 @@ class _HealthTipsScreenState extends State<HealthTipsScreen> {
   }
 
   Widget _buildTipCard(_HealthTip tip) {
+    final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: () => _showTipDetail(tip),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: AppTheme.shadowSm),
+        decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(16), boxShadow: AppTheme.shadowSm),
         child: Row(
           children: [
             Container(
@@ -200,7 +202,7 @@ class _HealthTipsScreenState extends State<HealthTipsScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.55,
-        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
         child: Column(
           children: [
             Container(margin: const EdgeInsets.symmetric(vertical: 12), width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2))),
@@ -240,7 +242,7 @@ class _HealthTip {
   const _HealthTip({required this.category, required this.title, required this.content, required this.icon, required this.color});
 }
 
-class _HealthTipSearchDelegate extends SearchDelegate<_HealthTip> {
+class _HealthTipSearchDelegate extends SearchDelegate<_HealthTip?> {
   final List<_HealthTip> _allTips;
 
   _HealthTipSearchDelegate(this._allTips);
@@ -249,7 +251,10 @@ class _HealthTipSearchDelegate extends SearchDelegate<_HealthTip> {
   List<Widget> buildActions(BuildContext context) => [IconButton(icon: const Icon(Icons.clear_rounded), onPressed: () => query = '')];
 
   @override
-  Widget buildLeading(BuildContext context) => IconButton(icon: const Icon(Icons.arrow_back_rounded), onPressed: () => close(context, _allTips.first));
+  Widget buildLeading(BuildContext context) => IconButton(
+        icon: const Icon(Icons.arrow_back_rounded),
+        onPressed: () => close(context, null),
+      );
 
   @override
   Widget buildResults(BuildContext context) => _buildSearchResults();
