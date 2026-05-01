@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/theme.dart';
 import '../utils/app_constants.dart';
@@ -39,7 +40,16 @@ class EmergencyModeScreen extends StatelessWidget {
             Icons.call_rounded,
             'Call Emergency',
             'Dial local emergency number immediately.',
-            () {},
+            () async {
+              final uri = Uri.parse('tel:911');
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+              } else if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Unable to place call. Please dial 911 manually.')),
+                );
+              }
+            },
           ),
           _tile(
             context,
