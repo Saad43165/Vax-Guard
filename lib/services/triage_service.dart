@@ -1,25 +1,26 @@
 import '../utils/app_constants.dart';
+
 class TriageQuestion {
   final String id;
-  final String question;
+  final String questionKey;
   final List<TriageOption> options;
-  final String category;
+  final String categoryKey;
 
   const TriageQuestion({
     required this.id,
-    required this.question,
+    required this.questionKey,
     required this.options,
-    required this.category,
+    required this.categoryKey,
   });
 }
 
 class TriageOption {
-  final String text;
+  final String textKey;
   final int score;
   final String emoji;
 
   const TriageOption({
-    required this.text,
+    required this.textKey,
     required this.score,
     required this.emoji,
   });
@@ -30,10 +31,10 @@ enum RiskLevel { low, medium, high, critical }
 class TriageResult {
   final RiskLevel level;
   final int score;
-  final String title;
-  final String description;
-  final String recommendation;
-  final List<String> actions;
+  final String titleKey;
+  final String descriptionKey;
+  final String recommendationKey;
+  final List<String> actionKeys;
   final String emoji;
   final bool isInputInsufficient;
   final List<String> drivers;
@@ -41,10 +42,10 @@ class TriageResult {
   const TriageResult({
     required this.level,
     required this.score,
-    required this.title,
-    required this.description,
-    required this.recommendation,
-    required this.actions,
+    required this.titleKey,
+    required this.descriptionKey,
+    required this.recommendationKey,
+    required this.actionKeys,
     required this.emoji,
     this.isInputInsufficient = false,
     this.drivers = const [],
@@ -55,51 +56,46 @@ class TriageService {
   static const List<TriageQuestion> questions = [
     TriageQuestion(
       id: 'q1',
-      question: 'Do you have any of the following symptoms?',
-      category: 'Symptoms',
+      questionKey: 'symptoms_question',
+      categoryKey: 'symptoms',
       options: [
-        TriageOption(text: 'No symptoms', score: 0, emoji: '😊'),
-        TriageOption(text: 'Mild fever or cough', score: 25, emoji: '🤒'),
-        TriageOption(text: 'High fever, body aches', score: 50, emoji: '🤧'),
-        TriageOption(
-            text: 'Difficulty breathing, chest pain', score: 100, emoji: '😰'),
+        TriageOption(textKey: 'no_symptoms', score: 0, emoji: '😊'),
+        TriageOption(textKey: 'mild_symptoms', score: 25, emoji: '🤒'),
+        TriageOption(textKey: 'moderate_symptoms', score: 50, emoji: '🤧'),
+        TriageOption(textKey: 'severe_symptoms', score: 100, emoji: '😰'),
       ],
     ),
     TriageQuestion(
       id: 'q2',
-      question: 'Have you been recently exposed to a contagious illness?',
-      category: 'Exposure',
+      questionKey: 'exposure_question',
+      categoryKey: 'exposure',
       options: [
-        TriageOption(text: 'No known exposure', score: 0, emoji: '✅'),
-        TriageOption(text: 'Possible exposure (1–2 weeks ago)', score: 20, emoji: '⚠️'),
-        TriageOption(text: 'Confirmed exposure (in last 7 days)', score: 40, emoji: '🔴'),
-        TriageOption(text: 'Direct contact with confirmed case', score: 60, emoji: '🚨'),
+        TriageOption(textKey: 'no_exposure', score: 0, emoji: '✅'),
+        TriageOption(textKey: 'possible_exposure', score: 20, emoji: '⚠️'),
+        TriageOption(textKey: 'confirmed_exposure', score: 40, emoji: '🔴'),
+        TriageOption(textKey: 'direct_contact', score: 60, emoji: '🚨'),
       ],
     ),
     TriageQuestion(
       id: 'q3',
-      question: 'What is your vaccination status?',
-      category: 'Vaccination',
+      questionKey: 'vaccination_status_question',
+      categoryKey: 'vaccination',
       options: [
-        TriageOption(text: 'Fully vaccinated & boosted', score: 0, emoji: '💉'),
-        TriageOption(text: 'Fully vaccinated', score: 10, emoji: '🩺'),
-        TriageOption(text: 'Partially vaccinated', score: 30, emoji: '⚠️'),
-        TriageOption(text: 'Not vaccinated', score: 50, emoji: '❌'),
+        TriageOption(textKey: 'fully_vax_boosted', score: 0, emoji: '💉'),
+        TriageOption(textKey: 'fully_vax', score: 10, emoji: '🩺'),
+        TriageOption(textKey: 'partially_vax', score: 30, emoji: '⚠️'),
+        TriageOption(textKey: 'not_vax', score: 50, emoji: '❌'),
       ],
     ),
     TriageQuestion(
       id: 'q4',
-      question: 'Do you have any underlying health conditions?',
-      category: 'Risk Factors',
+      questionKey: 'health_conditions_question',
+      categoryKey: 'risk_factors',
       options: [
-        TriageOption(text: 'No conditions', score: 0, emoji: '💪'),
-        TriageOption(text: 'Mild conditions (allergies)', score: 10, emoji: '🌿'),
-        TriageOption(
-            text: 'Moderate conditions (asthma, diabetes)', score: 25, emoji: '⚕️'),
-        TriageOption(
-            text: 'Severe conditions (heart disease, immunocompromised)',
-            score: 40,
-            emoji: '❤️‍🩹'),
+        TriageOption(textKey: 'no_conditions', score: 0, emoji: '💪'),
+        TriageOption(textKey: 'mild_conditions', score: 10, emoji: '🌿'),
+        TriageOption(textKey: 'moderate_conditions', score: 25, emoji: '⚕️'),
+        TriageOption(textKey: 'severe_conditions', score: 40, emoji: '❤️‍🩹'),
       ],
     ),
   ];
@@ -110,13 +106,12 @@ class TriageService {
         level: RiskLevel.low,
         score: 0,
         emoji: 'ℹ️',
-        title: 'Insufficient Input',
-        description:
-            'Please answer all triage questions to get a reliable risk result.',
-        recommendation: 'Complete all questions before submitting.',
-        actions: [
-          'Review each question and select one option.',
-          'Submit again to generate a full assessment.',
+        titleKey: 'insufficient_input',
+        descriptionKey: 'answer_all_questions',
+        recommendationKey: 'complete_before_submitting',
+        actionKeys: [
+          'review_select_option',
+          'submit_again_full',
         ],
         isInputInsufficient: true,
       );
@@ -131,13 +126,12 @@ class TriageService {
           level: RiskLevel.low,
           score: 0,
           emoji: 'ℹ️',
-          title: 'Insufficient Input',
-          description:
-              'One or more triage answers are missing, so risk cannot be estimated yet.',
-          recommendation: 'Complete all questions before submitting.',
-          actions: [
-            'Go back and answer the missing questions.',
-            'Submit again to receive your assessment.',
+          titleKey: 'insufficient_input',
+          descriptionKey: 'answer_all_questions',
+          recommendationKey: 'complete_before_submitting',
+          actionKeys: [
+            'review_select_option',
+            'submit_again_full',
           ],
           isInputInsufficient: true,
         );
@@ -146,27 +140,22 @@ class TriageService {
         final selected = question.options[optionIndex];
         totalScore += selected.score;
         if (selected.score >= 30) {
-          drivers.add('${question.category}: ${selected.text}');
+          drivers.add('${question.categoryKey}|${selected.textKey}');
         }
       } else {
         return const TriageResult(
           level: RiskLevel.low,
           score: 0,
           emoji: '⚠️',
-          title: 'Invalid Input',
-          description:
-              'An invalid answer was detected for one of the triage questions.',
-          recommendation: 'Retake the triage quiz using the listed options only.',
-          actions: [
-            'Restart the assessment.',
-            'Select one listed option per question.',
-          ],
+          titleKey: 'error',
+          descriptionKey: 'error',
+          recommendationKey: 'retry',
+          actionKeys: ['retry'],
           isInputInsufficient: true,
         );
       }
     }
 
-    // Normalize score to 0–100
     const maxPossibleScore = 100 + 60 + 50 + 40; // 250
     final normalizedScore = ((totalScore / maxPossibleScore) * 100).round();
 
@@ -183,15 +172,14 @@ class TriageService {
         level: RiskLevel.low,
         score: normalizedScore,
         emoji: '✅',
-        title: 'Low Risk',
-        description:
-            'Based on your responses, you appear to be at low risk. Continue maintaining good health practices.',
-        recommendation: 'You appear safe. Continue healthy habits.',
-        actions: const [
-          'Wash hands regularly',
-          'Stay up to date with vaccinations',
-          'Monitor for any new symptoms',
-          'Maintain a healthy lifestyle',
+        titleKey: 'low_risk',
+        descriptionKey: 'low_risk_desc',
+        recommendationKey: 'low_risk_desc',
+        actionKeys: const [
+          'wash_hands_regularly',
+          'stay_uptodate_vax',
+          'monitor_symptoms',
+          'healthy_lifestyle',
         ],
         drivers: drivers,
       );
@@ -200,16 +188,15 @@ class TriageService {
         level: RiskLevel.medium,
         score: normalizedScore,
         emoji: '⚠️',
-        title: 'Medium Risk',
-        description:
-            'You show some risk factors. Consider consulting a healthcare professional if symptoms persist or worsen.',
-        recommendation: 'Monitor symptoms and consult a doctor if needed.',
-        actions: const [
-          'Rest and stay hydrated',
-          'Monitor symptoms closely',
-          'Schedule an appointment with your doctor',
-          'Avoid contact with vulnerable individuals',
-          'Wear a mask in public',
+        titleKey: 'medium_risk',
+        descriptionKey: 'medium_risk_desc',
+        recommendationKey: 'medium_risk_desc',
+        actionKeys: const [
+          'rest_hydration',
+          'monitor_symptoms',
+          'schedule_doctor',
+          'avoid_vulnerable',
+          'wear_mask',
         ],
         drivers: drivers,
       );
@@ -218,17 +205,14 @@ class TriageService {
         level: RiskLevel.high,
         score: normalizedScore,
         emoji: '🔴',
-        title: 'High Risk',
-        description:
-            'Your symptoms and risk factors indicate high risk. Please consult a healthcare provider as soon as possible.',
-        recommendation: 'Consult a doctor soon. Do not delay medical care.',
-        actions: const [
-          'Contact your doctor immediately',
-          'Consider urgent care visit',
-          'Isolate from others',
-          'Keep emergency contacts ready',
-          'Document your symptoms',
-          'Follow healthcare provider instructions',
+        titleKey: 'high_risk',
+        descriptionKey: 'high_risk_desc',
+        recommendationKey: 'high_risk_desc',
+        actionKeys: const [
+          'contact_doctor_imm',
+          'urgent_care_visit',
+          'isolate_others',
+          'emergency_contacts_ready',
         ],
         drivers: drivers,
       );
@@ -237,17 +221,14 @@ class TriageService {
         level: RiskLevel.critical,
         score: normalizedScore,
         emoji: '🚨',
-        title: 'Critical Risk',
-        description:
-            'Your symptoms indicate a potentially serious condition requiring immediate medical attention.',
-        recommendation:
-            'Seek emergency medical care immediately. Call 911 or go to the nearest emergency room.',
-        actions: const [
-          'Call 911 immediately',
-          'Go to the nearest emergency room',
-          'Do not drive yourself',
-          'Inform someone of your condition',
-          'Bring your medical history',
+        titleKey: 'critical_risk',
+        descriptionKey: 'critical_risk_desc',
+        recommendationKey: 'critical_risk_desc',
+        actionKeys: const [
+          'call_911_imm',
+          'go_to_er',
+          'do_not_drive',
+          'inform_someone',
         ],
         drivers: drivers,
       );

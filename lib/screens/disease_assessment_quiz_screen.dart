@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../core/theme.dart';
 import '../models/disease_assessment.dart';
 import '../services/database_service.dart';
 import '../services/disease_assessment_service.dart';
 import '../utils/app_constants.dart';
+import '../utils/l10n_helper.dart';
+
 
 class DiseaseAssessmentQuizScreen extends StatefulWidget {
   final String definitionId;
@@ -23,8 +26,12 @@ class _DiseaseAssessmentQuizScreenState
     extends State<DiseaseAssessmentQuizScreen> {
   late final DiseaseAssessmentDefinition _definition;
   final Map<String, int> _answers = {};
-  int _currentIndex = 0;
+  final List<int> _history = [0];
+  final TextEditingController _notesController = TextEditingController();
+  bool _showNotesStep = false;
   bool _saving = false;
+
+  int get _currentIndex => _history.last;
 
   @override
   void initState() {
@@ -34,135 +41,203 @@ class _DiseaseAssessmentQuizScreenState
   }
 
   @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_currentIndex >= _definition.questions.length) {
+      return Scaffold(
+        backgroundColor: AppTheme.background(context),
+        body: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+      );
+    }
+
     final question = _definition.questions[_currentIndex];
     final progress = (_currentIndex + 1) / _definition.questions.length;
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: AppTheme.background(context),
       body: SafeArea(
         child: Column(
           children: [
             _buildHeader(progress),
             Expanded(
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 260),
+                duration: const Duration(milliseconds: 300),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
                 child: SingleChildScrollView(
-                  key: ValueKey(question.id),
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  key: ValueKey(_showNotesStep ? 'notes' : question.id),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildIntroCard(),
-                      const SizedBox(height: 16),
-                      _buildQuestionCard(question),
-                      const SizedBox(height: 16),
-                      _buildUrgentFlagsCard(),
+                      if (!_showNotesStep && _history.length == 1) ...[
+                        _buildIntroCard(),
+                        const SizedBox(height: 20),
+                      ],
+                      _showNotesStep ? _buildNotesStep() : _buildQuestionCard(question),
+                      const SizedBox(height: 20),
+                      if (!_showNotesStep) _buildUrgentFlagsCard(),
                     ],
                   ),
                 ),
               ),
             ),
-            _buildBottomBar(question),
+          ],
+        ),
+      ),
+      bottomNavigationBar: _buildBottomBar(question),
+    );
+  }
+
+  Widget _buildHeader(double progress) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppTheme.surface(context),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.border(context)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.of(context).maybePop(),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.background(context),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.close_rounded, color: AppTheme.textPrimary(context), size: 20),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        L10n.s(context, 'clinical_evaluation'),
+                        style: GoogleFonts.outfit(
+                          color: AppTheme.textTertiary(context),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      Text(
+                        L10n.s(context, _definition.title),
+                        style: GoogleFonts.outfit(
+                          color: AppTheme.textPrimary(context),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _definition.accentColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(_definition.icon, color: _definition.accentColor),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 4,
+                backgroundColor: AppTheme.background(context),
+                valueColor: AlwaysStoppedAnimation<Color>(_definition.accentColor),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(double progress) {
+  Widget _buildIntroCard() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: _definition.gradient,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: AppTheme.shadowPrimary,
+        gradient: LinearGradient(
+          colors: [_definition.accentColor.withOpacity(0.15), _definition.accentColor.withOpacity(0.05)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _definition.accentColor.withOpacity(0.2)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              IconButton(
-                onPressed: () => Navigator.of(context).maybePop(),
-                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _definition.title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 19,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Question ${_currentIndex + 1} of ${_definition.questions.length}',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.84),
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(14),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: _definition.accentColor, shape: BoxShape.circle),
+                child: const Icon(Icons.info_outline_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  L10n.s(context, 'about_this_assessment'),
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18, color: AppTheme.textPrimary(context)),
                 ),
-                child: Icon(_definition.icon, color: Colors.white),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: Colors.white.withValues(alpha: 0.18),
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
+          const SizedBox(height: 16),
+          Text(
+            _definition.subtitle,
+            style: GoogleFonts.outfit(fontSize: 14, color: AppTheme.textSecondary(context), height: 1.5, fontWeight: FontWeight.w500),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildIntroCard() {
-    final cs = Theme.of(context).colorScheme;
+  Widget _buildNotesStep() {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppTheme.border),
-      ),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(color: AppTheme.surface(context), borderRadius: BorderRadius.circular(20), border: Border.all(color: AppTheme.border(context))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Before You Start',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.textPrimary,
-            ),
+          Row(
+            children: [
+              Icon(Icons.edit_note_rounded, color: AppTheme.primary, size: 24),
+              const SizedBox(width: 12),
+              Text(L10n.s(context, 'additional_details'), style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.textPrimary(context))),
+            ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            _definition.disclaimer,
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
-              height: 1.5,
+          const SizedBox(height: 16),
+          Text(L10n.s(context, 'notes_hint_desc'), style: GoogleFonts.outfit(fontSize: 14, color: AppTheme.textSecondary(context), height: 1.4)),
+          const SizedBox(height: 24),
+          TextField(
+            controller: _notesController,
+            maxLines: 6,
+            decoration: InputDecoration(
+              hintText: L10n.s(context, 'type_notes_here'),
+              fillColor: AppTheme.background(context),
+              filled: true,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: AppTheme.border(context))),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: AppTheme.border(context))),
             ),
           ),
         ],
@@ -171,55 +246,45 @@ class _DiseaseAssessmentQuizScreenState
   }
 
   Widget _buildQuestionCard(DiseaseAssessmentQuestion question) {
-    final cs = Theme.of(context).colorScheme;
     final selectedIndex = _answers[question.id];
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.border),
-        boxShadow: AppTheme.shadowSm,
+        color: AppTheme.surface(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.border(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: _definition.accentColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(999),
+              color: AppTheme.background(context),
+              borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
-              _definition.subtitle,
-              style: TextStyle(
-                color: _definition.accentColor,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
+              L10n.s(context, 'observation').toUpperCase(),
+              style: GoogleFonts.outfit(
+                color: AppTheme.textTertiary(context),
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1,
               ),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Text(
-            question.prompt,
-            style: const TextStyle(
+            L10n.s(context, question.prompt),
+            style: GoogleFonts.outfit(
               fontSize: 22,
               fontWeight: FontWeight.w800,
-              color: AppTheme.textPrimary,
+              color: AppTheme.textPrimary(context),
               height: 1.2,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            question.helper,
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 24),
           ...question.options.asMap().entries.map((entry) {
             final index = entry.key;
             final option = entry.value;
@@ -227,71 +292,48 @@ class _DiseaseAssessmentQuizScreenState
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(18),
+              child: GestureDetector(
                 onTap: () => setState(() => _answers[question.id] = index),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
+                  duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? _definition.accentColor.withValues(alpha: 0.10)
-                        : AppTheme.surfaceVariant,
-                    borderRadius: BorderRadius.circular(18),
+                        ? _definition.accentColor.withOpacity(0.1)
+                        : AppTheme.background(context),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isSelected
                           ? _definition.accentColor
-                          : AppTheme.border,
+                          : AppTheme.border(context),
                       width: isSelected ? 2 : 1,
                     ),
                   ),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isSelected
-                              ? _definition.accentColor
-                              : Colors.transparent,
-                          border: Border.all(
-                            color: isSelected
-                                ? _definition.accentColor
-                                : AppTheme.border,
-                            width: 2,
-                          ),
-                        ),
-                        child: isSelected
-                            ? const Icon(
-                                Icons.check_rounded,
-                                size: 14,
-                                color: Colors.white,
-                              )
-                            : null,
+                      Icon(
+                        isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                        color: isSelected ? _definition.accentColor : AppTheme.textTertiary(context),
+                        size: 20,
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              option.label,
-                              style: TextStyle(
+                              L10n.s(context, option.label),
+                              style: GoogleFonts.outfit(
                                 fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                                color: isSelected
-                                    ? _definition.accentColor
-                                    : AppTheme.textPrimary,
+                                fontSize: 16,
+                                color: AppTheme.textPrimary(context),
                               ),
                             ),
-                            const SizedBox(height: 4),
                             Text(
-                              option.description,
-                              style: const TextStyle(
-                                color: AppTheme.textSecondary,
-                                height: 1.4,
+                              L10n.s(context, option.description),
+                              style: GoogleFonts.outfit(
+                                color: AppTheme.textSecondary(context),
+                                fontSize: 13,
                               ),
                             ),
                           ],
@@ -310,52 +352,47 @@ class _DiseaseAssessmentQuizScreenState
 
   Widget _buildUrgentFlagsCard() {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppTheme.dangerLight,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppTheme.danger.withValues(alpha: 0.18)),
+        color: AppTheme.danger.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.danger.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: AppTheme.danger),
-              SizedBox(width: 10),
+              Icon(Icons.warning_amber_rounded, color: AppTheme.danger, size: 20),
+              const SizedBox(width: 10),
               Text(
-                'Urgent Warning Signs',
-                style: TextStyle(
+                L10n.s(context, 'urgent_warning_signs'),
+                style: GoogleFonts.outfit(
                   color: AppTheme.danger,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12,
+                  letterSpacing: 1,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           ..._definition.urgentFlags.map(
             (flag) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    margin: const EdgeInsets.only(top: 7, right: 10),
-                    decoration: const BoxDecoration(
-                      color: AppTheme.danger,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
+                  Icon(Icons.check_circle_outline_rounded, size: 14, color: AppTheme.danger),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      flag,
-                      style: const TextStyle(
-                        color: AppTheme.textPrimary,
+                      L10n.s(context, flag),
+                      style: GoogleFonts.outfit(
+                        color: AppTheme.textPrimary(context),
                         height: 1.4,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -373,36 +410,43 @@ class _DiseaseAssessmentQuizScreenState
     final isLast = _currentIndex == _definition.questions.length - 1;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-      decoration: const BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      decoration: BoxDecoration(
+        color: AppTheme.surface(context),
+        border: Border(top: BorderSide(color: AppTheme.border(context))),
       ),
       child: Row(
         children: [
-          if (_currentIndex > 0)
+          if (_history.length > 1)
             Expanded(
-              child: OutlinedButton.icon(
+              child: OutlinedButton(
                 onPressed: _goBack,
-                icon: const Icon(Icons.arrow_back_rounded),
-                label: const Text('Back'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: BorderSide(color: AppTheme.border(context)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text('Back', style: GoogleFonts.outfit(color: AppTheme.textSecondary(context), fontWeight: FontWeight.w600)),
               ),
             ),
-          if (_currentIndex > 0) const SizedBox(width: 12),
+          if (_history.length > 1) const SizedBox(width: 16),
           Expanded(
             flex: 2,
-            child: ElevatedButton.icon(
+            child: ElevatedButton(
               onPressed: hasSelection && !_saving
                   ? (isLast ? _finishAssessment : _goNext)
                   : null,
-              icon: Icon(
-                isLast ? Icons.check_circle_rounded : Icons.arrow_forward_rounded,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: _definition.accentColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
               ),
-              label: Text(_saving
-                  ? 'Saving...'
-                  : isLast
-                      ? 'See Result'
-                      : 'Continue'),
+              child: Text(
+                _saving ? 'Saving...' : (_showNotesStep || (isLast && _answers.containsKey(question.id)) ? 'See Results' : 'Continue'),
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 16),
+              ),
             ),
           ),
         ],
@@ -411,11 +455,52 @@ class _DiseaseAssessmentQuizScreenState
   }
 
   void _goBack() {
-    setState(() => _currentIndex -= 1);
+    if (_showNotesStep) {
+      setState(() => _showNotesStep = false);
+    } else if (_history.length > 1) {
+      setState(() => _history.removeLast());
+    }
   }
 
   void _goNext() {
-    setState(() => _currentIndex += 1);
+    if (_showNotesStep) {
+      _finishAssessment();
+      return;
+    }
+    
+    final question = _definition.questions[_currentIndex];
+    if (!_answers.containsKey(question.id)) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(L10n.s(context, 'review_select_option')), backgroundColor: AppTheme.warning));
+      return;
+    }
+
+    int nextIndex = _currentIndex + 1;
+    
+    // Find next valid question based on dependencies
+    while (nextIndex < _definition.questions.length) {
+      final nextQ = _definition.questions[nextIndex];
+      if (nextQ.dependsOnQuestionId != null) {
+        final dependentAnswerIndex = _answers[nextQ.dependsOnQuestionId];
+        if (dependentAnswerIndex != null) {
+          final dependentQ = _definition.questions.firstWhere((q) => q.id == nextQ.dependsOnQuestionId);
+          final score = dependentQ.options[dependentAnswerIndex].score;
+          if (score >= (nextQ.minScoreDependency ?? 0)) {
+            break; // Include this question
+          }
+        }
+        // Skip this question and check the next one
+        nextIndex++;
+      } else {
+        break; // No dependency, include this question
+      }
+    }
+
+    if (nextIndex < _definition.questions.length) {
+      setState(() => _history.add(nextIndex));
+    } else {
+      // If we finished all questions, go to notes step
+      setState(() => _showNotesStep = true);
+    }
   }
 
   Future<void> _finishAssessment() async {
@@ -436,265 +521,36 @@ class _DiseaseAssessmentQuizScreenState
       answers: _answers,
       questions: _definition.questions,
       urgentFlags: _definition.urgentFlags,
+      details: _notesController.text.isNotEmpty ? _notesController.text : null,
     );
 
     if (!mounted) return;
     setState(() => _saving = false);
 
-    _showResultSheet(result);
-  }
-
-  void _showResultSheet(DiseaseAssessmentResult result) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        final severityColor = _severityColor(result.level);
-
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.82,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppTheme.border,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: severityColor.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    result.level == 'Urgent'
-                        ? Icons.emergency_rounded
-                        : result.level == 'High'
-                            ? Icons.warning_rounded
-                            : Icons.health_and_safety_rounded,
-                    color: severityColor,
-                    size: 36,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  result.headline,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  result.summary,
-                  style: const TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 15,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: severityColor.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        '${result.score}%',
-                        style: TextStyle(
-                          color: severityColor,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 26,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          '${result.level} concern level',
-                          style: TextStyle(
-                            color: severityColor,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 18),
-                _ResultBlock(
-                  title: 'What To Do Next',
-                  child: Text(
-                    result.nextStep,
-                    style: const TextStyle(
-                      color: AppTheme.textPrimary,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _ResultBlock(
-                  title: 'Recommended Actions',
-                  child: Column(
-                    children: result.actions
-                        .map(
-                          (action) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 7,
-                                  height: 7,
-                                  margin: const EdgeInsets.only(top: 7, right: 10),
-                                  decoration: BoxDecoration(
-                                    color: severityColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Text(
-                                    action,
-                                    style: const TextStyle(height: 1.5),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-                if (result.matchedConcerns.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  _ResultBlock(
-                    title: 'Matched Concerns',
-                    child: Column(
-                      children: result.matchedConcerns
-                          .map(
-                            (concern) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Icon(
-                                    Icons.circle,
-                                    size: 8,
-                                    color: AppTheme.warning,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(child: Text(concern)),
-                                ],
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.of(this.context).pop();
-                        },
-                        icon: const Icon(Icons.history_rounded),
-                        label: const Text('Back To Hub'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(
-                            this.context,
-                            AppConstants.hospitalMapRoute,
-                          );
-                        },
-                        icon: const Icon(Icons.local_hospital_rounded),
-                        label: const Text('Find Help'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Color _severityColor(String level) {
-    switch (level.toLowerCase()) {
-      case 'urgent':
-        return AppTheme.danger;
-      case 'high':
-        return AppTheme.warning;
-      case 'moderate':
-        return AppTheme.secondary;
-      default:
-        return AppTheme.success;
+    final answerStrings = <String, String>{};
+    for (final entry in _answers.entries) {
+      // Only include answers for questions we actually visited
+      if (_history.any((idx) => _definition.questions[idx].id == entry.key)) {
+        final question = _definition.questions.firstWhere((q) => q.id == entry.key);
+        answerStrings[question.prompt] = question.options[entry.value].label;
+      }
     }
-  }
-}
 
-class _ResultBlock extends StatelessWidget {
-  final String title;
-  final Widget child;
-
-  const _ResultBlock({
-    required this.title,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceVariant,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 10),
-          child,
-        ],
-      ),
+    Navigator.pushReplacementNamed(
+      context,
+      AppConstants.assessmentResultRoute,
+      arguments: <String, dynamic>{
+        'title': result.headline,
+        'subtitle': _definition.title,
+        'severity': result.level,
+        'score': result.score,
+        'summary': result.summary,
+        'actions': result.actions,
+        'drivers': result.matchedConcerns,
+        'details': _notesController.text,
+        'type': 'disease_assessment',
+        'answers': answerStrings,
+      },
     );
   }
 }

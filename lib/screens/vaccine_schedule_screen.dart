@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:uuid/uuid.dart';
+import 'package:printing/printing.dart';
+
 import '../core/theme.dart';
 import '../models/vaccine_record.dart';
 import '../services/database_service.dart';
 import '../utils/app_constants.dart';
-import '../utils/app_strings.dart';
-import '../widgets/vaccine_card.dart';
-import 'package:uuid/uuid.dart';
+import '../utils/l10n_helper.dart';
+import '../l10n/app_localizations.dart';
+import '../services/pdf_service.dart';
 
 class VaccineScheduleScreen extends StatefulWidget {
   const VaccineScheduleScreen({super.key});
@@ -16,7 +20,7 @@ class VaccineScheduleScreen extends StatefulWidget {
 }
 
 class _VaccineScheduleScreenState extends State<VaccineScheduleScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TabController _tabController;
   List<VaccineRecord> _allRecords = [];
   bool _isLoading = true;
@@ -36,106 +40,118 @@ class _VaccineScheduleScreenState extends State<VaccineScheduleScreen>
 
   Future<void> _loadRecords() async {
     final records = await DatabaseService.instance.getAllVaccineRecords();
-    setState(() {
-      _allRecords = records;
-      _isLoading = false;
-    });
+    records.sort((a, b) => b.vaccinationDate.compareTo(a.vaccinationDate));
+    if (mounted) {
+      setState(() {
+        _allRecords = records;
+        _isLoading = false;
+      });
+    }
   }
 
-  List<VaccineRecord> get _completedRecords =>
-      _allRecords.where((r) => r.isCompleted).toList();
-
-  List<VaccineRecord> get _pendingRecords =>
-      _allRecords.where((r) => !r.isCompleted).toList();
+  List<VaccineRecord> get _completedRecords => _allRecords.where((r) => r.isCompleted).toList();
+  List<VaccineRecord> get _pendingRecords => _allRecords.where((r) => !r.isCompleted).toList();
 
   @override
   Widget build(BuildContext context) {
-return Scaffold(
-      backgroundColor: AppTheme.background,
+    return Scaffold(
+      backgroundColor: AppTheme.background(context),
       appBar: AppBar(
-        title: const Text('Vaccine Schedule'),
-        centerTitle: false,
+        title: Text(L10n.s(context, 'vaccine_records'), style: GoogleFonts.outfit(fontWeight: FontWeight.w800, color: AppTheme.textPrimary(context))),
+        backgroundColor: AppTheme.surface(context),
+        foregroundColor: AppTheme.textPrimary(context),
         elevation: 0,
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Theme.of(context).colorScheme.primary,
-          unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
-          indicatorColor: Theme.of(context).colorScheme.primary,
-          tabs: [
-            Tab(text: 'All (${_allRecords.length})'),
-            Tab(text: 'Completed (${_completedRecords.length})'),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary(context)),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.picture_as_pdf_rounded, color: AppTheme.warning),
+            tooltip: L10n.s(context, 'export_pdf'),
+            onPressed: () => _exportPdf(context),
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(height: 1, color: AppTheme.border(context)),
+        ),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildStatsHeader(),
+            _buildTabs(),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildTimeline(_allRecords),
+                  _buildTimeline(_completedRecords),
+                ],
+              ),
+            ),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddVaccineSheet(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Add Vaccine'),
         backgroundColor: AppTheme.primary,
-      ),
-      body: Column(
-        children: [
-          _buildStatsBar(),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildVaccineList(_allRecords),
-                _buildVaccineList(_completedRecords),
-              ],
-            ),
-          ),
-        ],
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_rounded),
+        label: Text(L10n.s(context, 'save_vaccine'), style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
       ),
     );
   }
 
-  Widget _buildStatsBar() {
-    final cs = Theme.of(context).colorScheme;
+  Widget _buildStatsHeader() {
     final total = _allRecords.length;
     final completed = _completedRecords.length;
     final progress = total > 0 ? completed / total : 0.0;
 
     return Container(
-      padding: const EdgeInsets.all(16),
-      color: cs.surface,
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      decoration: BoxDecoration(
+        color: AppTheme.surface(context),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.border(context)),
+        boxShadow: AppTheme.shadowSm,
+      ),
       child: Column(
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildStat('Total', total.toString(), AppTheme.primary),
+              _buildStatItem(L10n.s(context, 'total'), total.toString(), AppTheme.primary),
               _buildStatDivider(),
-              _buildStat('Completed', completed.toString(), AppTheme.success),
+              _buildStatItem(L10n.s(context, 'completed'), completed.toString(), AppTheme.success),
               _buildStatDivider(),
-              _buildStat('Pending', _pendingRecords.length.toString(), AppTheme.warning),
+              _buildStatItem(L10n.s(context, 'pending'), _pendingRecords.length.toString(), AppTheme.warning),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
           Row(
             children: [
-              const Text(
-                'Progress: ',
-                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+              Text(
+                '${L10n.s(context, "protection")}: ',
+                style: GoogleFonts.outfit(fontSize: 13, color: AppTheme.textSecondary(context), fontWeight: FontWeight.w600),
               ),
               Expanded(
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(8),
                   child: LinearProgressIndicator(
                     value: progress,
                     minHeight: 8,
-                    backgroundColor: AppTheme.border,
-                    valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.success),
+                    backgroundColor: AppTheme.surfaceVariant(context),
+                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.success),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Text(
                 '${(progress * 100).round()}%',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.success,
-                ),
+                style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.success),
               ),
             ],
           ),
@@ -144,103 +160,222 @@ return Scaffold(
     );
   }
 
-  Widget _buildStat(String label, String value, Color color) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: color),
-          ),
-          Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-        ],
-      ),
+  Widget _buildStatItem(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(value, style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w900, color: color)),
+        const SizedBox(height: 2),
+        Text(label, style: GoogleFonts.outfit(fontSize: 11, color: AppTheme.textSecondary(context), fontWeight: FontWeight.w600)),
+      ],
     );
   }
 
   Widget _buildStatDivider() {
-    return Container(height: 40, width: 1, color: AppTheme.border);
+    return Container(height: 30, width: 1, color: AppTheme.border(context));
   }
 
-  Widget _buildVaccineList(List<VaccineRecord> records) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+  Widget _buildTabs() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: AppTheme.surface(context),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.border(context)),
+        ),
+        child: TabBar(
+          controller: _tabController,
+          labelColor: Colors.white,
+          unselectedLabelColor: AppTheme.textSecondary(context),
+          indicator: BoxDecoration(
+            color: AppTheme.primary,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          indicatorSize: TabBarIndicatorSize.tab,
+          dividerColor: Colors.transparent,
+          tabs: [
+            Tab(child: Text(L10n.s(context, 'all'), style: GoogleFonts.outfit(fontWeight: FontWeight.w700))),
+            Tab(child: Text(L10n.s(context, 'completed'), style: GoogleFonts.outfit(fontWeight: FontWeight.w700))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimeline(List<VaccineRecord> records) {
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
 
     if (records.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('💉', style: TextStyle(fontSize: 60)),
-            const SizedBox(height: 16),
-            const Text(
-              AppStrings.noVaccines,
-              style: TextStyle(fontSize: 16, color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 8),
-            const Text('Tap + to add your first vaccine record', style: TextStyle(fontSize: 13, color: AppTheme.textTertiary)),
+            Icon(Icons.vaccines_rounded, size: 64, color: AppTheme.textTertiary(context)),
+            const SizedBox(height: 20),
+            Text(L10n.s(context, 'no_history_yet'), style: GoogleFonts.outfit(fontSize: 18, color: AppTheme.textPrimary(context), fontWeight: FontWeight.w700)),
           ],
         ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
       itemCount: records.length,
       itemBuilder: (context, index) {
         final record = records[index];
-        return VaccineCard(
-          record: record,
-          onDelete: () => _deleteRecord(record),
-          onMarkComplete: record.isCompleted ? null : () => _markComplete(record),
+        final isLast = index == records.length - 1;
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: 40,
+                child: Column(
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: record.isCompleted ? AppTheme.success : AppTheme.warning,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppTheme.background(context), width: 4),
+                        boxShadow: [
+                          BoxShadow(color: (record.isCompleted ? AppTheme.success : AppTheme.warning).withOpacity(0.3), blurRadius: 8)
+                        ],
+                      ),
+                      child: record.isCompleted
+                          ? const Icon(Icons.check, size: 12, color: Colors.white)
+                          : const Icon(Icons.access_time_filled, size: 12, color: Colors.white),
+                    ),
+                    if (!isLast)
+                      Expanded(
+                        child: Container(
+                          width: 2,
+                          color: AppTheme.border(context).withOpacity(0.5),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surface(context),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppTheme.border(context)),
+                      boxShadow: AppTheme.shadowSm,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(child: Text(record.vaccineName, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.textPrimary(context)))),
+                            _buildRecordMenu(record),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(Icons.calendar_month_rounded, size: 14, color: AppTheme.textSecondary(context)),
+                            const SizedBox(width: 6),
+                            Text(DateFormat('MMM d, yyyy').format(record.vaccinationDate), style: GoogleFonts.outfit(fontSize: 12, color: AppTheme.textSecondary(context), fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        if (record.clinicName != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(color: AppTheme.surfaceVariant(context).withOpacity(0.5), borderRadius: BorderRadius.circular(8)),
+                            child: Row(
+                              children: [
+                                Icon(Icons.local_hospital_rounded, size: 12, color: AppTheme.primary),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text(record.clinicName!, style: GoogleFonts.outfit(fontSize: 12, color: AppTheme.textSecondary(context)))),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
+  Widget _buildRecordMenu(VaccineRecord record) {
+    return PopupMenuButton<String>(
+      icon: Icon(Icons.more_horiz_rounded, color: AppTheme.textTertiary(context)),
+      color: AppTheme.surface(context),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppTheme.border(context))),
+      onSelected: (val) {
+        if (val == 'delete') _deleteRecord(record);
+        if (val == 'complete') _markComplete(record);
+      },
+      itemBuilder: (context) => [
+        if (!record.isCompleted)
+          PopupMenuItem(
+            value: 'complete',
+            child: Row(children: [Icon(Icons.check_circle_outline, color: AppTheme.success, size: 18), const SizedBox(width: 12), Text(L10n.s(context, 'completed'), style: GoogleFonts.outfit())]),
+          ),
+        PopupMenuItem(
+          value: 'delete',
+          child: Row(children: [Icon(Icons.delete_outline_rounded, color: AppTheme.danger, size: 18), const SizedBox(width: 12), Text(L10n.s(context, 'cancel'), style: GoogleFonts.outfit(color: AppTheme.danger))]),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _exportPdf(BuildContext context) async {
+    try {
+      final l10n = AppLocalizations.of(context)!;
+      final pdf = await PdfService.generateVaccineReport(records: _allRecords, l10n: l10n);
+      await Printing.layoutPdf(onLayout: (format) async => pdf.save(), name: 'Vaccination_Report.pdf');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${L10n.s(context, 'pdf_error')}: $e'), backgroundColor: AppTheme.danger));
+    }
+  }
+
   Future<void> _deleteRecord(VaccineRecord record) async {
-    final confirmed = await showDialog<bool>(
+    final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Record'),
-        content: Text('Are you sure you want to delete ${record.vaccineName}?'),
+        backgroundColor: AppTheme.surface(context),
+        title: Text(L10n.s(context, 'cancel'), style: GoogleFonts.outfit(fontWeight: FontWeight.w800)),
+        content: Text('${L10n.s(context, "cancel")} ${record.vaccineName}?', style: GoogleFonts.outfit()),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: AppTheme.danger),
-            child: const Text('Delete'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(L10n.s(context, 'cancel'), style: GoogleFonts.outfit())),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(L10n.s(context, 'cancel'), style: GoogleFonts.outfit(color: AppTheme.danger, fontWeight: FontWeight.w800))),
         ],
       ),
     );
-
-    if (confirmed == true && mounted) {
+    if (ok == true) {
       await DatabaseService.instance.deleteVaccineRecord(record.id);
       _loadRecords();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text(AppStrings.vaccineDeleted)));
-      }
     }
   }
 
   Future<void> _markComplete(VaccineRecord record) async {
     await DatabaseService.instance.markVaccineComplete(record.id);
     _loadRecords();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${record.vaccineName} marked as completed!')));
-    }
   }
 
   void _showAddVaccineSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: Colors.transparent,
       builder: (context) => _AddVaccineSheet(onAdded: _loadRecords),
     );
   }
@@ -248,9 +383,7 @@ return Scaffold(
 
 class _AddVaccineSheet extends StatefulWidget {
   final VoidCallback onAdded;
-
   const _AddVaccineSheet({required this.onAdded});
-
   @override
   State<_AddVaccineSheet> createState() => _AddVaccineSheetState();
 }
@@ -260,221 +393,84 @@ class _AddVaccineSheetState extends State<_AddVaccineSheet> {
   String? _selectedVaccine;
   String? _selectedDose;
   DateTime _selectedDate = DateTime.now();
-  DateTime? _nextDoseDate;
   final _lotController = TextEditingController();
-  final _adminByController = TextEditingController();
   final _clinicController = TextEditingController();
-  final _notesController = TextEditingController();
   bool _isCompleted = true;
-  bool _isSaving = false;
-
-  @override
-  void dispose() {
-    _lotController.dispose();
-    _adminByController.dispose();
-    _clinicController.dispose();
-    _notesController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return Container(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.92),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildSheetHandle(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Add Vaccine Record',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
-                      ),
-                      const SizedBox(height: 20),
-                      _buildVaccineDropdown(),
-                      const SizedBox(height: 16),
-                      _buildDoseDropdown(),
-                      const SizedBox(height: 16),
-                      _buildDatePicker(label: 'Vaccination Date *', date: _selectedDate, onChanged: (d) => setState(() => _selectedDate = d)),
-                      const SizedBox(height: 16),
-                      _buildTextField(controller: _lotController, label: 'Lot Number *', hint: 'e.g. EK4241', validator: (v) => v == null || v.isEmpty ? 'Required' : null),
-                      const SizedBox(height: 16),
-                      _buildTextField(controller: _clinicController, label: 'Clinic / Hospital', hint: 'Optional'),
-                      const SizedBox(height: 16),
-                      _buildTextField(controller: _adminByController, label: 'Administered By', hint: 'Optional'),
-                      const SizedBox(height: 16),
-                      _buildDatePicker(label: 'Next Dose Date (Optional)', date: _nextDoseDate, onChanged: (d) => setState(() => _nextDoseDate = d), allowNull: true),
-                      const SizedBox(height: 16),
-                      _buildTextField(controller: _notesController, label: 'Notes', hint: 'Optional notes', maxLines: 2),
-                      const SizedBox(height: 16),
-                      _buildCompletedToggle(),
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed: _isSaving ? null : _saveRecord,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primary,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: _isSaving
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
-                                )
-                              : const Text(AppStrings.saveVaccine, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-                        ),
-                      ),
-                    ],
-                  ),
+      decoration: BoxDecoration(color: AppTheme.surface(context), borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(L10n.s(context, 'save_vaccine'), style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.textPrimary(context))),
+              const SizedBox(height: 24),
+              _buildDropdown(L10n.s(context, 'vaccines'), AppConstants.commonVaccines, (v) => setState(() => _selectedVaccine = v)),
+              const SizedBox(height: 16),
+              _buildTextField(L10n.s(context, 'hospitals'), _clinicController),
+              const SizedBox(height: 16),
+              _buildDatePicker(L10n.s(context, 'today'), _selectedDate, (d) => setState(() => _selectedDate = d)),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _save,
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                  child: Text(L10n.s(context, 'save_vaccine'), style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSheetHandle() {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 12),
-      width: 40,
-      height: 4,
-      decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
-    );
-  }
-
-  Widget _buildVaccineDropdown() {
-    final cs = Theme.of(context).colorScheme;
+  Widget _buildDropdown(String label, List<String> items, Function(String?) onChanged) {
     return DropdownButtonFormField<String>(
-      initialValue: _selectedVaccine,
-      decoration: InputDecoration(
-        labelText: 'Vaccine Name *',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        filled: true,
-        fillColor: cs.surface,
-      ),
-      hint: const Text('Select vaccine'),
-      items: AppConstants.commonVaccines.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
-      onChanged: (v) => setState(() => _selectedVaccine = v),
-      validator: (v) => v == null ? 'Please select a vaccine' : null,
+      decoration: InputDecoration(labelText: label, filled: true, fillColor: AppTheme.surfaceVariant(context).withOpacity(0.3), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+      items: items.map((i) => DropdownMenuItem(value: i, child: Text(i))).toList(),
+      onChanged: onChanged,
     );
   }
 
-  Widget _buildDoseDropdown() {
-    final cs = Theme.of(context).colorScheme;
-    return DropdownButtonFormField<String>(
-      initialValue: _selectedDose,
-      decoration: InputDecoration(
-        labelText: 'Dose Number',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        filled: true,
-        fillColor: cs.surface,
-      ),
-      hint: const Text('Select dose (optional)'),
-      items: AppConstants.doseNumbers.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
-      onChanged: (v) => setState(() => _selectedDose = v),
-    );
+  Widget _buildTextField(String label, TextEditingController controller) {
+    return TextFormField(controller: controller, decoration: InputDecoration(labelText: label, filled: true, fillColor: AppTheme.surfaceVariant(context).withOpacity(0.3), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)));
   }
 
-  Widget _buildDatePicker({required String label, DateTime? date, required Function(DateTime) onChanged, bool allowNull = false}) {
-    final cs = Theme.of(context).colorScheme;
-    DateTime effectiveDate = date ?? DateTime.now();
-    return GestureDetector(
+  Widget _buildDatePicker(String label, DateTime date, Function(DateTime) onChanged) {
+    return ListTile(
+      title: Text(label),
+      subtitle: Text(DateFormat('MMM d, yyyy').format(date)),
       onTap: () async {
-        final picked = await showDatePicker(
-          context: context,
-          initialDate: effectiveDate,
-          firstDate: DateTime(2000),
-          lastDate: DateTime(2030),
-        );
-        if (picked != null) onChanged(picked);
+        final d = await showDatePicker(context: context, initialDate: date, firstDate: DateTime(2000), lastDate: DateTime(2030));
+        if (d != null) onChanged(d);
       },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(color: cs.surface, border: Border.all(color: AppTheme.border), borderRadius: BorderRadius.circular(12)),
-        child: Row(
-          children: [
-            const Icon(Icons.calendar_today, size: 18, color: AppTheme.textSecondary),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                Text(
-                  date != null ? DateFormat('MMM d, yyyy').format(date) : 'Not selected',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: date != null ? AppTheme.textPrimary : AppTheme.textTertiary),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String label, String? hint, int maxLines = 1, String? Function(String?)? validator}) {
-    final cs = Theme.of(context).colorScheme;
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      style: TextStyle(color: cs.onSurface),
-      decoration: InputDecoration(labelText: label, hintText: hint, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: cs.surface),
-      validator: validator,
-    );
-  }
-
-  Widget _buildCompletedToggle() {
-    return Row(
-      children: [
-        const Text('Mark as Completed', style: TextStyle(fontSize: 14, color: AppTheme.textPrimary, fontWeight: FontWeight.w500)),
-        const Spacer(),
-        Switch(value: _isCompleted, onChanged: (v) => setState(() => _isCompleted = v), activeTrackColor: AppTheme.success),
-      ],
-    );
-  }
-
-  Future<void> _saveRecord() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isSaving = true);
-
-    try {
-      final record = VaccineRecord(
-        id: const Uuid().v4(),
-        vaccineName: _selectedVaccine!,
-        vaccinationDate: _selectedDate,
-        lotNumber: _lotController.text.trim(),
-        administeredBy: _adminByController.text.trim().isEmpty ? null : _adminByController.text.trim(),
-        clinicName: _clinicController.text.trim().isEmpty ? null : _clinicController.text.trim(),
-        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-        isCompleted: _isCompleted,
-        nextDoseDate: _nextDoseDate,
-        doseNumber: _selectedDose,
-      );
-
-      await DatabaseService.instance.addVaccineRecord(record);
-
-      if (mounted) {
-        Navigator.pop(context);
-        widget.onAdded();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text(AppStrings.vaccineAdded)));
-      }
-    } catch (e) {
-      setState(() => _isSaving = false);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving record: $e')));
+  Future<void> _save() async {
+    if (_selectedVaccine == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(L10n.s(context, 'select_vaccine_error')), backgroundColor: AppTheme.danger));
+      return;
     }
+    final record = VaccineRecord(
+      id: const Uuid().v4(),
+      vaccineName: _selectedVaccine!,
+      vaccinationDate: _selectedDate,
+      lotNumber: 'NA',
+      clinicName: _clinicController.text,
+      isCompleted: _isCompleted,
+    );
+    await DatabaseService.instance.addVaccineRecord(record);
+    widget.onAdded();
+    Navigator.pop(context);
   }
 }

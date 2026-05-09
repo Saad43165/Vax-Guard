@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show Color;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_constants.dart';
@@ -37,17 +38,27 @@ class NotificationService {
   }
 
   Future<void> _createNotificationChannels() async {
-    const channel = AndroidNotificationChannel(
+    const vaccineChannel = AndroidNotificationChannel(
       AppConstants.vaccineReminderChannelId,
       AppConstants.vaccineReminderChannelName,
       description: 'Reminders for upcoming vaccine doses',
       importance: Importance.high,
     );
 
-    await _notificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
+    const outbreakChannel = AndroidNotificationChannel(
+      AppConstants.outbreakAlertChannelId,
+      AppConstants.outbreakAlertChannelName,
+      description: 'Live disease outbreak proximity alerts',
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+    );
+
+    final androidPlugin = _notificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+
+    await androidPlugin?.createNotificationChannel(vaccineChannel);
+    await androidPlugin?.createNotificationChannel(outbreakChannel);
   }
 
   void _onNotificationResponse(NotificationResponse response) {
@@ -177,5 +188,73 @@ class NotificationService {
 
   Future<void> cancelAllNotifications() async {
     await _notificationsPlugin.cancelAll();
+  }
+
+  /// Shows a high-priority outbreak alert notification.
+  Future<void> showOutbreakAlert({
+    required String disease,
+    required String region,
+    required String severity,
+  }) async {
+    final androidDetails = AndroidNotificationDetails(
+      AppConstants.outbreakAlertChannelId,
+      AppConstants.outbreakAlertChannelName,
+      channelDescription: 'Live disease outbreak proximity alerts',
+      importance: Importance.max,
+      priority: Priority.max,
+      icon: '@mipmap/ic_launcher',
+      color: const Color(0xFFFF3B30),
+      ticker: '⚠️ Outbreak Alert',
+      styleInformation: BigTextStyleInformation(
+        '[$severity Risk] $disease has been detected in $region. Open VaxGuard for WHO prevention guidelines.',
+        contentTitle: '⚠️ Outbreak Alert: $disease',
+        summaryText: 'Tap to view prevention steps',
+      ),
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      interruptionLevel: InterruptionLevel.timeSensitive,
+    );
+
+    await _notificationsPlugin.show(
+      9001,
+      '⚠️ Outbreak Alert: $disease',
+      '[$severity] Detected in $region. Tap for WHO guidelines.',
+      NotificationDetails(android: androidDetails, iOS: iosDetails),
+      payload: 'outbreak_alert',
+    );
+  }
+
+  /// Schedules a simulated proximity alert for demo/testing.
+  Future<void> scheduleProximityAlertDemo() async {
+    // Show a "Service Active" notification first
+    final androidDetails = AndroidNotificationDetails(
+      AppConstants.outbreakAlertChannelId,
+      AppConstants.outbreakAlertChannelName,
+      importance: Importance.low,
+      priority: Priority.low,
+      ongoing: false,
+      autoCancel: true,
+      showWhen: true,
+    );
+
+    await _notificationsPlugin.show(
+      8888,
+      '🛡️ VaxGuard Radar Active',
+      'Proximity alerts are now monitoring your region.',
+      NotificationDetails(android: androidDetails),
+    );
+
+    // Simulate an actual alert after 3 seconds for demo purposes
+    Future.delayed(const Duration(seconds: 3), () async {
+      await showOutbreakAlert(
+        disease: 'Seasonal Influenza (H1N1)',
+        region: 'Localized Urban Area',
+        severity: 'Moderate',
+      );
+    });
   }
 }

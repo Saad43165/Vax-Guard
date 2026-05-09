@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../core/theme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -15,14 +16,14 @@ class AnimatedCounter extends StatefulWidget {
   final Curve curve;
 
   const AnimatedCounter({
-    Key? key,
+    super.key,
     required this.value,
     this.style,
     this.prefix,
     this.suffix,
     this.duration = const Duration(milliseconds: 800),
     this.curve = Curves.easeOutCubic,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimatedCounter> createState() => _AnimatedCounterState();
@@ -100,7 +101,7 @@ class AnimatedProgressBar extends StatefulWidget {
   final String? label;
 
   const AnimatedProgressBar({
-    Key? key,
+    super.key,
     required this.progress,
     this.backgroundColor,
     this.progressColor,
@@ -110,7 +111,7 @@ class AnimatedProgressBar extends StatefulWidget {
     this.curve = Curves.easeInOut,
     this.showLabel = false,
     this.label,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimatedProgressBar> createState() => _AnimatedProgressBarState();
@@ -165,24 +166,24 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
         if (widget.showLabel) ...[
           AnimatedBuilder(
             animation: _animation,
-            builder: (_, __) => Row(
+            builder: (_, _) => Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 if (widget.label != null)
                   Text(
                     widget.label!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: AppTheme.textSecondary,
+                      color: AppTheme.textSecondary(context),
                     ),
                   ),
                 Text(
                   '${(_animation.value.clamp(0.0, 1.0) * 100).round()}%',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
+                    color: AppTheme.textPrimary(context),
                   ),
                 ),
               ],
@@ -192,7 +193,7 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
         ],
         AnimatedBuilder(
           animation: _animation,
-          builder: (_, __) {
+          builder: (_, _) {
             final value = _animation.value.clamp(0.0, 1.0);
             return LayoutBuilder(
               builder: (context, constraints) {
@@ -200,7 +201,7 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
                 return Container(
                   height: widget.height,
                   decoration: BoxDecoration(
-                    color: widget.backgroundColor ?? AppTheme.border,
+                    color: widget.backgroundColor ?? AppTheme.border(context),
                     borderRadius: BorderRadius.circular(widget.height / 2),
                   ),
                   child: Stack(
@@ -245,7 +246,7 @@ class AnimatedStatCard extends StatelessWidget {
   final bool changePositive;
 
   const AnimatedStatCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.value,
     required this.icon,
@@ -254,92 +255,86 @@ class AnimatedStatCard extends StatelessWidget {
     this.suffix,
     this.changeLabel,
     this.changePositive = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.surface(context),
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: AppTheme.border(context)),
         boxShadow: AppTheme.shadowMd,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Icon + title row
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                height: 36,
-                width: 36,
+                height: 32,
+                width: 32,
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, size: 18, color: color),
+                child: Icon(icon, size: 16, color: color),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.textSecondary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              if (changeLabel != null)
+                Icon(
+                  changePositive
+                      ? Icons.trending_up_rounded
+                      : Icons.trending_down_rounded,
+                  size: 14,
+                  color: changePositive ? AppTheme.success : AppTheme.danger,
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 12),
+          Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textSecondary(context),
+              letterSpacing: 0.2,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
 
           // Animated number
           AnimatedCounter(
             value: value,
             prefix: prefix,
             suffix: suffix,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.textPrimary,
-              letterSpacing: -0.8,
+            style: GoogleFonts.outfit(
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              color: AppTheme.textPrimary(context),
+              letterSpacing: -0.5,
             ),
           ),
-
-          // Change label
           if (changeLabel != null) ...[
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(
-                  changePositive
-                      ? Icons.trending_up_rounded
-                      : Icons.trending_down_rounded,
-                  size: 13,
-                  color: changePositive ? AppTheme.success : AppTheme.danger,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  changeLabel!,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: changePositive ? AppTheme.success : AppTheme.danger,
-                  ),
-                ),
-              ],
+            const SizedBox(height: 4),
+            Text(
+              changeLabel!,
+              style: GoogleFonts.outfit(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: changePositive ? AppTheme.success : AppTheme.danger,
+              ),
             ),
           ],
         ],
       ),
     );
   }
+
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -356,7 +351,7 @@ class AnimatedProgressRing extends StatefulWidget {
   final Duration duration;
 
   const AnimatedProgressRing({
-    Key? key,
+    super.key,
     required this.progress,
     this.size = 80,
     this.strokeWidth = 8,
@@ -364,7 +359,7 @@ class AnimatedProgressRing extends StatefulWidget {
     this.progressColor,
     this.child,
     this.duration = const Duration(milliseconds: 1200),
-  }) : super(key: key);
+  });
 
   @override
   State<AnimatedProgressRing> createState() => _AnimatedProgressRingState();
@@ -414,7 +409,7 @@ class _AnimatedProgressRingState extends State<AnimatedProgressRing>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _animation,
-      builder: (_, __) => SizedBox(
+      builder: (_, _) => SizedBox(
         height: widget.size,
         width: widget.size,
         child: Stack(
@@ -425,7 +420,7 @@ class _AnimatedProgressRingState extends State<AnimatedProgressRing>
               painter: _RingPainter(
                 progress: _animation.value.clamp(0.0, 1.0),
                 strokeWidth: widget.strokeWidth,
-                trackColor: widget.trackColor ?? AppTheme.border,
+                trackColor: widget.trackColor ?? AppTheme.border(context),
                 progressColor: widget.progressColor ??
                     Theme.of(context).colorScheme.primary,
               ),

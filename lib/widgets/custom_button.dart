@@ -24,7 +24,7 @@ class CustomButton extends StatefulWidget {
   final bool fullWidth;
 
   const CustomButton({
-    Key? key,
+    super.key,
     required this.label,
     this.onPressed,
     this.variant = ButtonVariant.primary,
@@ -33,7 +33,7 @@ class CustomButton extends StatefulWidget {
     this.trailingIcon,
     this.isLoading = false,
     this.fullWidth = true,
-  }) : super(key: key);
+  });
 
   @override
   State<CustomButton> createState() => _CustomButtonState();
@@ -97,12 +97,12 @@ class _CustomButtonState extends State<CustomButton>
   }
 
   // ─── Variant Config ───────────────────────────────────────────────────────
-  _ButtonConfig get _config {
+  _ButtonConfig _getConfig(BuildContext context) {
     final disabled = widget.onPressed == null && !widget.isLoading;
     switch (widget.variant) {
       case ButtonVariant.primary:
         return _ButtonConfig(
-          bg: disabled ? AppTheme.textTertiary : AppTheme.primary,
+          bg: disabled ? AppTheme.textTertiary(context) : AppTheme.primary,
           fg: Colors.white,
           border: null,
           shadows: disabled ? [] : AppTheme.shadowPrimary,
@@ -167,7 +167,7 @@ class _CustomButtonState extends State<CustomButton>
 
   @override
   Widget build(BuildContext context) {
-    final cfg = _config;
+    final cfg = _getConfig(context);
     final isDisabled = widget.onPressed == null && !widget.isLoading;
 
     return AnimatedBuilder(
@@ -262,7 +262,7 @@ class _ButtonConfig {
 }
 
 // ─── Icon-only Button ─────────────────────────────────────────────────────
-class IconButton2 extends StatefulWidget {
+class CustomIconButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback? onPressed;
   final Color? color;
@@ -270,21 +270,21 @@ class IconButton2 extends StatefulWidget {
   final double size;
   final String? tooltip;
 
-  const IconButton2({
-    Key? key,
+  const CustomIconButton({
+    super.key,
     required this.icon,
     this.onPressed,
     this.color,
     this.background,
     this.size = 40,
     this.tooltip,
-  }) : super(key: key);
+  });
 
   @override
-  State<IconButton2> createState() => _IconButton2State();
+  State<CustomIconButton> createState() => _CustomIconButtonState();
 }
 
-class _IconButton2State extends State<IconButton2>
+class _CustomIconButtonState extends State<CustomIconButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
 
@@ -322,14 +322,14 @@ class _IconButton2State extends State<IconButton2>
           height: widget.size,
           width: widget.size,
           decoration: BoxDecoration(
-            color: widget.background ?? AppTheme.surfaceVariant,
+            color: widget.background ?? AppTheme.surfaceVariant(context),
             borderRadius: BorderRadius.circular(widget.size / 3),
-            border: Border.all(color: AppTheme.border),
+            border: Border.all(color: AppTheme.border(context).withOpacity(0.5)),
           ),
           child: Icon(
             widget.icon,
             size: widget.size * 0.46,
-            color: widget.color ?? AppTheme.textSecondary,
+            color: widget.color ?? AppTheme.textSecondary(context),
           ),
         ),
       ),

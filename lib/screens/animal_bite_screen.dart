@@ -1,9 +1,12 @@
-import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../core/theme.dart';
-import '../../services/sqlite_service.dart';
-import '../../utils/app_constants.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../core/theme.dart';
+import '../services/database_service.dart';
+import '../services/animal_bite_triage_service.dart';
+import '../utils/app_constants.dart';
+import '../utils/l10n_helper.dart';
 
 class AnimalBiteScreen extends StatefulWidget {
   const AnimalBiteScreen({super.key});
@@ -12,297 +15,408 @@ class AnimalBiteScreen extends StatefulWidget {
   State<AnimalBiteScreen> createState() => _AnimalBiteScreenState();
 }
 
-class _AnimalBiteScreenState extends State<AnimalBiteScreen> with SingleTickerProviderStateMixin {
-  String _step = 'landing';
+class _AnimalBiteScreenState extends State<AnimalBiteScreen> {
+  final PageController _pageController = PageController();
+  int _currentStep = 0;
   final Map<String, String> _answers = {};
   XFile? _woundImage;
-  String _result = '';
-  int _currentQ = 0;
-  final TextEditingController _inputController = TextEditingController();
-  late AnimationController _animController;
-  late Animation<double> _fadeAnimation;
-
-  final List<Map<String, String>> _questions = [
-    {'id': 'animal', 'label': 'Which animal bit you?', 'placeholder': 'e.g. dog, cat, bat, rabbit, fox...'},
-    {'id': 'time', 'label': 'How long ago did the bite occur?', 'placeholder': 'e.g. 30 minutes, 2 hours, yesterday...'},
-    {'id': 'location', 'label': 'Where on the body is the bite?', 'placeholder': 'e.g. hand, leg, face, arm...'},
-    {'id': 'depth', 'label': 'How deep does the wound look?', 'placeholder': 'e.g. scratch, broke skin, deep puncture...'},
-    {'id': 'bleeding', 'label': 'Is/was it bleeding?', 'placeholder': 'e.g. yes heavily, minor bleeding, no bleeding...'},
-    {'id': 'animal_status', 'label': 'Do you know the animal status?', 'placeholder': 'e.g. vaccinated, stray, unknown, foaming...'},
-    {'id': 'region', 'label': 'What country/region are you in?', 'placeholder': 'e.g. India, USA, Southeast Asia...'},
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _animController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this);
-    _fadeAnimation = CurvedAnimation(parent: _animController, curve: Curves.easeInOut);
-  }
+  final TextEditingController _notesController = TextEditingController();
+  bool _isAnalyzing = false;
 
   @override
   void dispose() {
-    _inputController.dispose();
-    _animController.dispose();
+    _pageController.dispose();
+    _notesController.dispose();
     super.dispose();
+  }
+
+  void _nextStep() {
+    if (_currentStep < 7) {
+      _pageController.nextPage(duration: const Duration(milliseconds: 500), curve: Curves.easeInOutCubic);
+      setState(() => _currentStep++);
+    } else {
+      _analyzeBite();
+    }
+  }
+
+  void _prevStep() {
+    if (_currentStep > 0) {
+      _pageController.previousPage(duration: const Duration(milliseconds: 500), curve: Curves.easeInOutCubic);
+      setState(() => _currentStep--);
+    }
   }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_rounded, color: AppTheme.danger),
-              title: const Text('Take Photo'),
-              onTap: () async {
-                Navigator.pop(context);
-                final image = await picker.pickImage(source: ImageSource.camera, maxWidth: 800, maxHeight: 800, imageQuality: 70);
-                if (image != null) setState(() => _woundImage = image);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_rounded, color: AppTheme.danger),
-              title: const Text('Choose from Gallery'),
-              onTap: () async {
-                Navigator.pop(context);
-                final image = await picker.pickImage(source: ImageSource.gallery, maxWidth: 800, maxHeight: 800, imageQuality: 70);
-                if (image != null) setState(() => _woundImage = image);
-              },
-            ),
-          ],
-        ),
-      ),
+    final image = await picker.pickImage(source: ImageSource.camera, maxWidth: 800, maxHeight: 800);
+    if (image != null) setState(() => _woundImage = image);
+  }
+
+  Future<void> _analyzeBite() async {
+    setState(() => _isAnalyzing = true);
+    
+    // Simulate high-fidelity clinical analysis
+    await Future.delayed(const Duration(seconds: 2));
+
+    final triage = AnimalBiteTriageService.instance;
+    final category = triage.calculateCategory(
+      exposureType: _answers['exposure_type'] ?? 'none',
+      anatomicalLocation: _answers['location'] ?? 'none',
+      animalBehavior: _answers['behavior'] ?? 'none',
+      isStray: (_answers['species'] ?? '').contains('stray'),
     );
-  }
 
-  void _nextQuestion() {
-    if (_inputController.text.trim().isEmpty) return;
-    final q = _questions[_currentQ];
-    setState(() {
-      _answers[q['id']!] = _inputController.text.trim();
-      _inputController.text = '';
-    });
-    if (_currentQ < _questions.length - 1) {
-      setState(() => _currentQ++);
-    } else {
-      _analyzeCase();
-    }
-  }
-
-  void _goBack() {
-    if (_currentQ > 0) {
-      setState(() {
-        _currentQ--;
-        _inputController.text = _answers[_questions[_currentQ]['id']] ?? '';
-      });
-    }
-  }
-
-  void _analyzeCase() {
-    setState(() => _step = 'analyzing');
-    Future.delayed(const Duration(seconds: 2), () {
-      final analysis = _performWHOAssessment();
-      _animController.forward();
-      setState(() {
-        _result = analysis;
-        _step = 'result';
-      });
-      _saveAssessment();
-    });
-  }
-
-  String _performWHOAssessment() {
-    final animal = (_answers['animal'] ?? '').toLowerCase();
-    final depth = (_answers['depth'] ?? '').toLowerCase();
-    final bleeding = (_answers['bleeding'] ?? '').toLowerCase();
-    final animalStatus = (_answers['animal_status'] ?? '').toLowerCase();
-    
-    final highRiskAnimals = ['dog', 'cat', 'bat', 'raccoon', 'fox', 'skunk', 'wolf', 'coyote'];
-    final lowRiskAnimals = ['rabbit', 'hamster', 'guinea pig', 'squirrel', 'mouse', 'rat'];
-    
-    bool isHighRisk = highRiskAnimals.any((a) => animal.contains(a));
-    bool isLowRisk = lowRiskAnimals.any((a) => animal.contains(a));
-    bool isDeep = depth.contains('deep') || depth.contains('puncture');
-    bool isSevereBleeding = bleeding.contains('heavy') || bleeding.contains('severely');
-    bool isStrayOrWild = animalStatus.contains('stray') || animalStatus.contains('unknown') || animalStatus.contains('wild') || animalStatus.contains('foaming');
-    
-    String severity, firstAid, medicalTreatment, timeUrgency, riskFactors, recos;
-    
-    if (isHighRisk && (isDeep || isSevereBleeding || isStrayOrWild)) {
-      severity = '🚨 EMERGENCY';
-      firstAid = '1. 🧼 Wash wound with soap for 15+ MINUTES\n2. 🧴 Apply povidone-iodine\n3. 🩹 DO NOT suture wound\n4. 🧊 Keep clean and elevated\n5. 🚑 Seek emergency care NOW';
-      medicalTreatment = '✅ RABIES PEP REQUIRED:\n• Vaccine series (day 0, 3, 7, 14, 28)\n• Rabies Immune Globulin\n• Tetanus booster\n• Antibiotics';
-      timeUrgency = '⚠️ WITHIN 24 HOURS';
-      riskFactors = '• High-risk animal: $animal\n• ${isDeep ? "Deep wound" : "Open wound"}\n• $bleeding';
-      recos = '1. Go to ER IMMEDIATELY\n2. Start PEP today\n3. Keep wound clean\n4. Monitor for infection';
-    } else if (isHighRisk) {
-      severity = '🟠 URGENT';
-      firstAid = '1. 🧼 Wash wound for 10-15 minutes\n2. 🧴 Apply antiseptic\n3. 🩹 Cover with dressing\n4. 🚑 Seek care within 48h';
-      medicalTreatment = '⚠️ MEDICAL CARE NEEDED:\n• Rabies PEP discussion\n• Tetanus check\n• Wound assessment';
-      timeUrgency = '⏰ WITHIN 48 HOURS';
-      riskFactors = '• $animal - potential risk\n• ${depth.isNotEmpty ? depth : "Standard wound"}';
-      recos = '1. Schedule doctor visit\n2. Get rabies vaccines\n3. Monitor wound daily';
-    } else if (isLowRisk) {
-      severity = '🟢 LOW RISK';
-      firstAid = '1. 🧼 Clean with soap/water\n2. 🧴 Apply antibiotic\n3. 🩹 Keep covered\n4. 👀 Watch for infection';
-      medicalTreatment = 'ℹ️ BASIC FIRST AID:\n• Tetanus if needed\n• Monitor only\n• Rabies risk very low';
-      timeUrgency = '✅ WITHIN 72 HOURS';
-      riskFactors = '• Low-risk: $animal\n• Rare rabies carrier';
-      recos = '1. Clean wound daily\n2. No rabies vaccine\n3. Should heal in 1-2 weeks';
-    } else {
-      severity = '🟡 MODERATE';
-      firstAid = '1. 🧼 Clean wound 10+ min\n2. 🧴 Apply antiseptic\n3. 🩹 Apply clean dressing';
-      medicalTreatment = '⚠️ CONSULT PROVIDER:\n• Check tetanus status\n• Assess rabies risk';
-      timeUrgency = '⏰ WITHIN 48-72 HOURS';
-      riskFactors = '• General assessment\n• Check local rabies';
-      recos = '1. Contact healthcare\n2. Update tetanus\n3. Document incident';
+    String risk;
+    double score;
+    switch (category) {
+      case ExposureCategory.categoryIII:
+        risk = 'Critical';
+        score = 0.95;
+        break;
+      case ExposureCategory.categoryII:
+        risk = 'High';
+        score = 0.65;
+        break;
+      case ExposureCategory.categoryI:
+        risk = 'Low';
+        score = 0.15;
+        break;
+      default:
+        risk = 'Low';
+        score = 0.0;
     }
 
-    return '''
-$severity
+    final findings = triage.getRecommendations(category);
+    final schedule = triage.generatePEPSchedule(DateTime.now());
+    final categoryStr = category.toString().split('.').last.toUpperCase().replaceAll('CATEGORY', 'Category ');
 
-🩺 ASSESSMENT SUMMARY:
-━━━━━━━━━━━━━━━━━━━━━━━
+    await DatabaseService.instance.saveAnimalBiteAssessment(
+      answers: _answers,
+      result: '$categoryStr - $risk Risk',
+      details: _notesController.text.trim(),
+    );
 
-📍 YOUR ANSWERS:
-• Animal: ${_answers['animal'] ?? 'N/A'}
-• Time: ${_answers['time'] ?? 'N/A'}
-• Location: ${_answers['location'] ?? 'N/A'}
-• Depth: ${_answers['depth'] ?? 'N/A'}
-• Bleeding: ${_answers['bleeding'] ?? 'N/A'}
-• Status: ${_answers['animal_status'] ?? 'N/A'}
-
-━━━━━━━━━━━━━━━━━━━━━━━
-
-🩹 FIRST AID STEPS:
-$firstAid
-
-💉 MEDICAL TREATMENT:
-$medicalTreatment
-
-⏰ TIME URGENCY:
-$timeUrgency
-
-⚠️ RISK FACTORS:
-$riskFactors
-
-📋 RECOMMENDATIONS:
-$recos
-
-━━━━━━━━━━━━━━━━━━━━━━━
-
-ℹ️ DISCLAIMER:
-AI guidance based on WHO. 
-Consult doctor immediately.
-Emergency: call 911.
-''';
-  }
-
-  Future<void> _saveAssessment() async {
-    final db = await SQLiteService.instance.database;
-    await db.insert('triage_results', {
-      'symptoms': '${_answers['animal']} - ${_answers['time']}',
-      'risk_level': _result.contains('EMERGENCY') ? 'Critical' : _result.contains('URGENT') ? 'High' : _result.contains('MODERATE') ? 'Medium' : 'Low',
-      'risk_score': _result.contains('EMERGENCY') ? 90 : _result.contains('URGENT') ? 70 : _result.contains('MODERATE') ? 40 : 20,
-      'recommendations': _result,
-      'created_at': DateTime.now().toIso8601String(),
-    });
-  }
-
-  Color _getSeverityColor() {
-    if (_result.contains('EMERGENCY')) return AppTheme.danger;
-    if (_result.contains('URGENT')) return Colors.orange;
-    if (_result.contains('MODERATE')) return AppTheme.warning;
-    return AppTheme.success;
-  }
-
-  void _reset() {
-    _animController.reset();
-    setState(() {
-      _step = 'landing';
-      _answers.clear();
-      _woundImage = null;
-      _result = '';
-      _currentQ = 0;
-      _inputController.text = '';
-    });
+    if (mounted) {
+      setState(() => _isAnalyzing = false);
+      Navigator.pushReplacementNamed(
+        context, 
+        AppConstants.animalBiteResultRoute,
+        arguments: {
+          'risk': risk,
+          'category': categoryStr,
+          'score': score,
+          'findings': findings,
+          'schedule': schedule.map((d) => d.toIso8601String()).toList(),
+          'answers': _answers,
+          'notes': _notesController.text.trim(),
+          'imagePath': _woundImage?.path,
+        }
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: const Text('Animal Bite Advisor'),
-        backgroundColor: AppTheme.danger,
-        foregroundColor: Colors.white,
-        leading: IconButton(icon: const Icon(Icons.arrow_back_rounded), onPressed: () => Navigator.pop(context)),
+      backgroundColor: AppTheme.background(context),
+    appBar: AppBar(
+  backgroundColor: AppTheme.surface(context),
+  elevation: 0,
+  scrolledUnderElevation: 0,
+  centerTitle: true,
+  leading: IconButton(
+    icon: Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary(context)),
+    onPressed: _currentStep > 0 ? _prevStep : () => Navigator.pop(context),
+  ),
+  title: Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Image.asset('assets/images/appbar_icon.png', height: 26, fit: BoxFit.contain),
+      const SizedBox(width: 10),
+      Text(
+        L10n.s(context, 'animal_bite'),
+        style: GoogleFonts.outfit(
+          color: AppTheme.textPrimary(context),
+          fontWeight: FontWeight.w900,
+          fontSize: 18,
+        ),
       ),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: _step == 'landing' ? _buildLanding() :
-               _step == 'intake' ? _buildIntake() :
-               _step == 'analyzing' ? _buildAnalyzing() :
-               FadeTransition(key: const ValueKey('result'), opacity: _fadeAnimation, child: _buildResult()),
+    ],
+  ),
+  bottom: PreferredSize(
+    preferredSize: const Size.fromHeight(1),
+    child: Container(
+      color: AppTheme.border(context).withOpacity(0.5),
+      height: 1,
+    ),
+  ),
+),
+      body: Column(
+        children: [
+          _buildProgressIndicator(),
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _buildLanding(),
+                _buildAnimalStep(),
+                _buildAnatomicalStep(),
+                _buildExposureStep(),
+                _buildFirstAidStep(),
+                _buildPhotoStep(),
+                _buildManualNotesStep(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Row(
+        children: List.generate(8, (index) {
+          final isActive = index <= _currentStep;
+          return Expanded(
+            child: Container(
+              height: 4,
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              decoration: BoxDecoration(color: isActive ? AppTheme.danger : AppTheme.border(context).withOpacity(0.2), borderRadius: BorderRadius.circular(2)),
+            ),
+          );
+        }),
       ),
     );
   }
 
   Widget _buildLanding() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       child: Column(
         children: [
+          const SizedBox(height: 40),
           Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: AppTheme.dangerLight, borderRadius: BorderRadius.circular(16)),
-            child: Row(children: [
-              const Icon(Icons.warning_rounded, color: AppTheme.danger, size: 28),
-              const SizedBox(width: 12),
-              Expanded(child: Text('For emergencies, call 911 immediately. This is AI guidance based on WHO.', style: TextStyle(fontSize: 13, color: AppTheme.danger, fontWeight: FontWeight.w500))),
-            ]),
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppTheme.danger.withOpacity(0.2), AppTheme.danger.withOpacity(0.05)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(color: AppTheme.danger.withOpacity(0.1), blurRadius: 24, offset: const Offset(0, 12)),
+              ],
+            ),
+            child: Icon(Icons.medical_information_rounded, color: AppTheme.danger, size: 64),
           ),
-          const SizedBox(height: 20),
-          Container(width: 90, height: 90, decoration: BoxDecoration(color: AppTheme.dangerLight, shape: BoxShape.circle), child: const Icon(Icons.pets_rounded, size: 45, color: AppTheme.danger)),
+          const SizedBox(height: 40),
+          Text(L10n.s(context, 'animal_bite_assessor'), textAlign: TextAlign.center, style: GoogleFonts.outfit(fontSize: 34, fontWeight: FontWeight.w900, color: AppTheme.textPrimary(context))),
           const SizedBox(height: 16),
-          const Text('Animal Bite Advisor', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
-          const Text('WHO-guideline based assessment', style: TextStyle(color: AppTheme.textSecondary)),
-          const SizedBox(height: 20),
+          Text(
+            L10n.s(context, 'rabies_risk_desc'), 
+            textAlign: TextAlign.center, 
+            style: GoogleFonts.outfit(fontSize: 16, color: AppTheme.textSecondary(context), height: 1.5),
+          ),
+          const SizedBox(height: 64),
+          Container(
+            width: double.infinity,
+            height: 64,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(color: AppTheme.danger.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
+              ],
+            ),
+            child: ElevatedButton(
+              onPressed: _nextStep,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.danger, 
+                foregroundColor: Colors.white, 
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                elevation: 0,
+              ),
+              child: Text(L10n.s(context, 'start_assessment'), style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w800)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnimalStep() {
+    return _buildOptionStep('species', 'animal_type', 'select_animal_desc', Icons.pets_rounded, [
+      'dog_stray', 'cat_stray', 'wildlife', 'pet_vax', 'rodent'
+    ]);
+  }
+
+  Widget _buildAnatomicalStep() {
+    return _buildOptionStep('location', 'bite_location', 'select_location_desc', Icons.person_rounded, [
+      'head_neck_face', 'hands_fingers', 'arms_shoulders', 'trunk_legs'
+    ]);
+  }
+
+  Widget _buildExposureStep() {
+    return _buildOptionStep('exposure_type', 'exposure_severity', 'select_severity_desc', Icons.healing_rounded, [
+      'bite_broken', 'scratch_minor', 'licks_broken', 'licks_intact', 'bat_contact'
+    ]);
+  }
+
+  Widget _buildFirstAidStep() {
+    return _buildOptionStep('first_aid', 'immediate_care', 'select_first_aid_desc', Icons.clean_hands_rounded, [
+      'washed_soap', 'antiseptic_applied', 'none'
+    ]);
+  }
+
+  Widget _buildOptionStep(String id, String titleKey, String descKey, IconData icon, List<String> options) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.danger.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: AppTheme.danger, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    L10n.s(context, 'step').toUpperCase() + ' $_currentStep',
+                    style: GoogleFonts.outfit(color: AppTheme.danger, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1.5),
+                  ),
+                  Text(
+                    'CLINICAL PROTOCOL',
+                    style: GoogleFonts.outfit(color: AppTheme.textTertiary(context), fontWeight: FontWeight.w700, fontSize: 10, letterSpacing: 0.5),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          Text(L10n.s(context, titleKey), style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.w900, color: AppTheme.textPrimary(context))),
+          const SizedBox(height: 8),
+          Text(L10n.s(context, descKey), style: GoogleFonts.outfit(color: AppTheme.textSecondary(context), fontSize: 15, height: 1.4)),
+          const SizedBox(height: 32),
+          ...options.map((opt) {
+            final isSelected = _answers[id] == opt;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: InkWell(
+                onTap: () {
+                  setState(() => _answers[id] = opt);
+                  Future.delayed(const Duration(milliseconds: 200), _nextStep);
+                },
+                borderRadius: BorderRadius.circular(18),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppTheme.danger.withOpacity(0.08) : AppTheme.surface(context),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: isSelected ? AppTheme.danger : AppTheme.border(context),
+                      width: isSelected ? 2.5 : 1,
+                    ),
+                    boxShadow: isSelected ? [BoxShadow(color: AppTheme.danger.withOpacity(0.1), blurRadius: 12, offset: const Offset(0, 4))] : [],
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          L10n.s(context, opt),
+                          style: GoogleFonts.outfit(
+                            fontSize: 16,
+                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                            color: isSelected ? AppTheme.danger : AppTheme.textPrimary(context),
+                          ),
+                        ),
+                      ),
+                      if (isSelected) Icon(Icons.check_circle_rounded, color: AppTheme.danger, size: 24),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhotoStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12), 
+                decoration: BoxDecoration(color: AppTheme.danger.withOpacity(0.1), borderRadius: BorderRadius.circular(14)), 
+                child: Icon(Icons.camera_alt_rounded, color: AppTheme.danger, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Text(
+                L10n.s(context, 'wound_documentation').toUpperCase(), 
+                style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.textPrimary(context), letterSpacing: 0.5),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
           GestureDetector(
             onTap: _pickImage,
             child: Container(
+              height: 320,
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: _woundImage != null ? AppTheme.successLight : AppTheme.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _woundImage != null ? AppTheme.success : AppTheme.border, width: 2),
-              ),
-              child: Column(
-                children: [
-                  Icon(_woundImage != null ? Icons.check_circle_rounded : Icons.add_photo_alternate_rounded, size: 40, color: _woundImage != null ? AppTheme.success : AppTheme.textTertiary),
-                  const SizedBox(height: 8),
-                  Text(_woundImage != null ? 'Image Selected' : 'Upload Wound Photo', style: TextStyle(fontSize: 15, color: _woundImage != null ? AppTheme.success : AppTheme.textSecondary, fontWeight: FontWeight.w600)),
-                  if (_woundImage != null) ...[
-                    const SizedBox(height: 12),
-                    ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(File(_woundImage!.path), height: 100, width: double.infinity, fit: BoxFit.cover)),
-                  ],
+                color: AppTheme.surface(context),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: AppTheme.border(context), 
+                  style: _woundImage == null ? BorderStyle.solid : BorderStyle.none,
+                ),
+                image: _woundImage != null ? DecorationImage(image: FileImage(File(_woundImage!.path)), fit: BoxFit.cover) : null,
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10)),
                 ],
               ),
+              child: _woundImage == null 
+                  ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_a_photo_rounded, size: 64, color: AppTheme.textTertiary(context).withOpacity(0.5)),
+                        const SizedBox(height: 16),
+                        Text('Tap to capture photo', style: GoogleFonts.outfit(color: AppTheme.textTertiary(context), fontWeight: FontWeight.w600)),
+                      ],
+                    ) 
+                  : null,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 40),
           SizedBox(
             width: double.infinity,
+            height: 64,
             child: ElevatedButton(
-              onPressed: () => setState(() => _step = 'intake'),
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger, foregroundColor: Colors.white, padding: const EdgeInsets.all(16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-              child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text('Start Assessment', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)), SizedBox(width: 8), Icon(Icons.arrow_forward_rounded)]),
+              onPressed: _nextStep, 
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.danger, 
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                elevation: 0,
+              ), 
+              child: Text(L10n.s(context, 'next_step'), style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 16)),
             ),
           ),
         ],
@@ -310,112 +424,57 @@ Emergency: call 911.
     );
   }
 
-  Widget _buildIntake() {
+  Widget _buildManualNotesStep() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('Question ${_currentQ + 1}/${_questions.length}', style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
-            Text('${((_currentQ + 1) / _questions.length * 100).round()}%', style: const TextStyle(fontSize: 13, color: AppTheme.danger, fontWeight: FontWeight.w600)),
-          ]),
-          const SizedBox(height: 8),
-          ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: (_currentQ + 1) / _questions.length, minHeight: 8, backgroundColor: AppTheme.border, valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.danger))),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12), 
+                decoration: BoxDecoration(color: AppTheme.danger.withOpacity(0.1), borderRadius: BorderRadius.circular(14)), 
+                child: Icon(Icons.edit_note_rounded, color: AppTheme.danger, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Text(
+                L10n.s(context, 'additional_details').toUpperCase(), 
+                style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.textPrimary(context), letterSpacing: 0.5),
+              ),
+            ],
+          ),
           const SizedBox(height: 32),
-          Container(width: 70, height: 70, decoration: BoxDecoration(color: AppTheme.dangerLight, shape: BoxShape.circle), child: Center(child: Text('${_currentQ + 1}', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppTheme.danger)))),
-          const SizedBox(height: 20),
-          Text(_questions[_currentQ]['label']!, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700), textAlign: TextAlign.center),
-          const SizedBox(height: 24),
           TextField(
-            controller: _inputController,
-            autofocus: true,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: InputDecoration(hintText: _questions[_currentQ]['placeholder'], filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppTheme.danger, width: 2)), contentPadding: const EdgeInsets.all(18)),
-            onSubmitted: (_) => _nextQuestion(),
+            controller: _notesController, 
+            maxLines: 6, 
+            decoration: InputDecoration(
+              hintText: L10n.s(context, 'notes_hint'), 
+              hintStyle: GoogleFonts.outfit(color: AppTheme.textTertiary(context)),
+              filled: true,
+              fillColor: AppTheme.surface(context),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: AppTheme.border(context))),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: AppTheme.border(context))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: AppTheme.danger)),
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 40),
           SizedBox(
             width: double.infinity,
+            height: 64,
             child: ElevatedButton(
-              onPressed: _nextQuestion,
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger, foregroundColor: Colors.white, padding: const EdgeInsets.all(16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-              child: Text(_currentQ < _questions.length - 1 ? 'Next →' : 'Analyze Now 🔍', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              onPressed: _analyzeBite, 
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.danger, 
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                elevation: 0,
+              ), 
+              child: _isAnalyzing 
+                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)) 
+                  : Text(L10n.s(context, 'analyze_risk'), style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 16)),
             ),
           ),
-          if (_currentQ > 0) ...[
-            const SizedBox(height: 12),
-            SizedBox(width: double.infinity, child: OutlinedButton(onPressed: _goBack, style: OutlinedButton.styleFrom(padding: const EdgeInsets.all(14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.arrow_back_rounded), SizedBox(width: 8), Text('Back')]))),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAnalyzing() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(width: 90, height: 90, child: CircularProgressIndicator(strokeWidth: 6, valueColor: AlwaysStoppedAnimation<Color>(AppTheme.danger))),
-          const SizedBox(height: 24),
-          const Text('Analyzing your case...', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          const Text('Applying WHO protocols', style: TextStyle(color: AppTheme.textSecondary)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResult() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: _getSeverityColor().withAlpha(26), borderRadius: BorderRadius.circular(16), border: Border.all(color: _getSeverityColor().withAlpha(128))),
-            child: Row(children: [
-              Container(width: 50, height: 50, decoration: BoxDecoration(color: _getSeverityColor(), shape: BoxShape.circle), child: Icon(_result.contains('EMERGENCY') ? Icons.warning_rounded : _result.contains('URGENT') ? Icons.priority_high_rounded : _result.contains('MODERATE') ? Icons.info_rounded : Icons.check_circle_rounded, color: Colors.white, size: 26)),
-              const SizedBox(width: 14),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(_result.contains('EMERGENCY') ? '🚨 EMERGENCY' : _result.contains('URGENT') ? '🟠 URGENT' : _result.contains('MODERATE') ? '🟡 MODERATE' : '🟢 LOW RISK', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _getSeverityColor())),
-                const Text('Assessment Complete', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
-              ])),
-            ]),
-          ),
-          if (_woundImage != null) ...[
-            const SizedBox(height: 16),
-            ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.file(File(_woundImage!.path), width: double.infinity, height: 150, fit: BoxFit.cover)),
-          ],
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: AppTheme.shadowSm),
-            child: Column(
-              children: _result.split('\n').map((line) {
-                if (line.startsWith('━')) return const SizedBox(height: 12);
-                if (line.isEmpty) return const SizedBox(height: 4);
-                Color color = AppTheme.textPrimary;
-                double size = 14;
-                FontWeight weight = FontWeight.w400;
-                if (line.contains('🚨') || line.contains('🟠') || line.contains('🟡') || line.contains('🟢')) { 
-                  color = _getSeverityColor(); weight = FontWeight.w700; size = 16; 
-                } else if (line.contains('🩺') || line.contains('📍')) { 
-                  weight = FontWeight.w700; size = 15; 
-                } else if (line.contains('•')) {
-                  size = 13;
-                }
-                return Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(line, style: TextStyle(fontSize: size, color: color, fontWeight: weight, height: 1.4)));
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(width: double.infinity, padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppTheme.dangerLight, borderRadius: BorderRadius.circular(16)),
-            child: Row(children: [const Icon(Icons.medical_information_rounded, color: AppTheme.danger), const SizedBox(width: 12), Expanded(child: Text('Always consult a doctor. In emergencies call 911.', style: TextStyle(fontSize: 13, color: AppTheme.danger, fontWeight: FontWeight.w500)))])),
-          const SizedBox(height: 20),
-          SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: _reset, icon: const Icon(Icons.refresh_rounded), label: const Text('New Assessment'), style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger, foregroundColor: Colors.white, padding: const EdgeInsets.all(14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))))),
         ],
       ),
     );

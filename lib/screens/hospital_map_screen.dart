@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../core/theme.dart';
-import '../../services/location_service.dart';
+import 'package:geolocator/geolocator.dart';
+import '../core/theme.dart';
+import '../utils/l10n_helper.dart';
 
 class HospitalMapScreen extends StatefulWidget {
   const HospitalMapScreen({super.key});
@@ -12,296 +12,479 @@ class HospitalMapScreen extends StatefulWidget {
   State<HospitalMapScreen> createState() => _HospitalMapScreenState();
 }
 
-class _HospitalMapScreenState extends State<HospitalMapScreen> {
-  final MapController _mapController = MapController();
-  List<Hospital> _hospitals = [];
-  bool _isLoading = true;
-  String? _error;
-  Hospital? _selectedHospital;
-  AppMapType _mapType = AppMapType.standard;
-  bool _locationFetched = false;
-  LatLng? _currentLocation;
+class _HospitalMapScreenState extends State<HospitalMapScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late AnimationController _fadeController;
+  late Animation<double> _pulseAnimation;
+  late Animation<double> _fadeAnimation;
+  bool _isLocating = false;
+  String? _activeSearch;
+  final ScrollController _scrollController = ScrollController();
+  bool _isCollapsed = false;
+
+  final List<_SearchOption> _searchOptions = [
+    _SearchOption(
+      label: 'Hospitals',
+      query: 'hospitals near me',
+      icon: Icons.local_hospital_rounded,
+      color: const Color(0xFFEF4444),
+      description: 'Full-service hospitals with ER',
+    ),
+    _SearchOption(
+      label: 'Clinics',
+      query: 'medical clinic near me',
+      icon: Icons.medical_services_rounded,
+      color: const Color(0xFF3B82F6),
+      description: 'Walk-in & outpatient clinics',
+    ),
+    _SearchOption(
+      label: 'Pharmacies',
+      query: 'pharmacy near me',
+      icon: Icons.local_pharmacy_rounded,
+      color: const Color(0xFF10B981),
+      description: 'Drug stores & pharmacies',
+    ),
+    _SearchOption(
+      label: 'Emergency',
+      query: 'emergency room near me',
+      icon: Icons.emergency_rounded,
+      color: const Color(0xFFF59E0B),
+      description: '24/7 emergency care units',
+    ),
+    _SearchOption(
+      label: 'Dentists',
+      query: 'dentist near me',
+      icon: Icons.sentiment_very_satisfied_rounded,
+      color: const Color(0xFF8B5CF6),
+      description: 'Dental clinics & specialists',
+    ),
+    _SearchOption(
+      label: 'Labs',
+      query: 'medical laboratory near me',
+      icon: Icons.biotech_rounded,
+      color: const Color(0xFF06B6D4),
+      description: 'Diagnostic labs & blood work',
+    ),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _loadData();
-  }
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
 
-  Future<void> _loadData() async {
-    setState(() { _isLoading = true; _error = null; });
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    )..forward();
 
-    try {
-      final position = await LocationService.instance.getCurrentPosition();
-      
-      LatLng currentLatLng;
-      if (position != null) {
-        currentLatLng = LatLng(position.latitude, position.longitude);
-        _currentLocation = currentLatLng;
-        _locationFetched = true;
-      } else {
-        currentLatLng = const LatLng(37.7749, -122.4194);
-      }
-      
-      final hospitals = await LocationService.instance.getNearbyHospitals(
-        latitude: currentLatLng.latitude,
-        longitude: currentLatLng.longitude,
-      );
-      
-      setState(() {
-        _hospitals = hospitals;
-        _isLoading = false;
-      });
+    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
 
-      _mapController.move(currentLatLng, 13.0);
-    } catch (e) {
-      setState(() { 
-        _error = e.toString(); 
-        _isLoading = false; 
-      });
-    }
-  }
-
-  String _getTileUrl() {
-    switch (_mapType) {
-      case AppMapType.satellite:
-        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-      case AppMapType.terrain:
-        return 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
-      case AppMapType.standard:
-      default:
-        return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-    }
-  }
-
-  void _goToCurrentLocation() async {
-    final position = await LocationService.instance.getCurrentPosition();
-    if (position != null) {
-      _mapController.move(LatLng(position.latitude, position.longitude), 15.0);
-    }
+    _scrollController.addListener(() {
+      final collapsed = _scrollController.offset > 120;
+      if (collapsed != _isCollapsed) setState(() => _isCollapsed = collapsed);
+    });
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.error_outline, size: 64, color: AppTheme.danger),
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(_error!, textAlign: TextAlign.center),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(onPressed: _loadData, child: const Text('Retry')),
-                ]))
-              : Stack(
-                  children: [
-                    FlutterMap(
-                      mapController: _mapController,
-                      options: MapOptions(
-                        initialCenter: _currentLocation ?? const LatLng(37.7749, -122.4194),
-                        initialZoom: 13.0,
-                        onTap: (_, __) => setState(() => _selectedHospital = null),
-                      ),
-                      children: [
-                        TileLayer(urlTemplate: _getTileUrl(), userAgentPackageName: 'com.example.vaxguard'),
-                        MarkerLayer(
-                          markers: [
-                            if (_locationFetched && _currentLocation != null)
-                              Marker(
-                                point: _currentLocation!,
-                                width: 50, height: 50,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primary, shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white, width: 3),
-                                    boxShadow: AppTheme.shadowMd,
-                                  ),
-                                  child: const Icon(Icons.my_location, color: Colors.white, size: 24),
-                                ),
-                              ),
-                            ..._hospitals.map((hospital) => Marker(
-                                  point: LatLng(hospital.latitude, hospital.longitude),
-                                  width: 50, height: 50,
-                                  child: GestureDetector(
-                                    onTap: () => setState(() => _selectedHospital = hospital),
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: hospital.isEmergency ? AppTheme.danger : AppTheme.secondary,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: _selectedHospital?.id == hospital.id ? Colors.amber : Colors.white,
-                                          width: _selectedHospital?.id == hospital.id ? 3 : 2,
-                                        ),
-                                        boxShadow: AppTheme.shadowMd,
-                                      ),
-                                      child: Icon(
-                                        Icons.local_hospital, color: Colors.white,
-                                        size: _selectedHospital?.id == hospital.id ? 26 : 22,
-                                      ),
-                                    ),
-                                  ),
-                                )),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Positioned(
-                      top: MediaQuery.of(context).padding.top + 10,
-                      left: 16, right: 16,
-                      child: Container(
-                        height: 50,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: AppTheme.shadowSm,
-                        ),
-                        child: Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.arrow_back_rounded),
-                              onPressed: () => Navigator.pop(context),
-                            ),
-                            Expanded(
-                              child: Text(
-                                'Find Hospital',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                            PopupMenuButton<AppMapType>(
-                              icon: const Icon(Icons.layers_rounded),
-                              onSelected: (type) => setState(() => _mapType = type),
-                              itemBuilder: (_) => [
-                                const PopupMenuItem(value: AppMapType.standard, child: Text('Standard')),
-                                const PopupMenuItem(value: AppMapType.satellite, child: Text('Satellite')),
-                                const PopupMenuItem(value: AppMapType.terrain, child: Text('Terrain')),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: 16, bottom: _selectedHospital != null ? 180 : 16,
-                      child: Column(
-                        children: [
-                          FloatingActionButton.small(
-                            heroTag: 'location',
-                            onPressed: _goToCurrentLocation,
-                            backgroundColor: Colors.white,
-                            child: const Icon(Icons.my_location, color: AppTheme.primary),
-                          ),
-                          const SizedBox(height: 12),
-                          FloatingActionButton(
-                            heroTag: 'refresh',
-                            onPressed: _loadData,
-                            backgroundColor: AppTheme.primary,
-                            child: const Icon(Icons.refresh, color: Colors.white),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (_selectedHospital != null) _buildHospitalSheet(),
-                  ],
-                ),
-    );
+  void dispose() {
+    _pulseController.dispose();
+    _fadeController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
-  Widget _buildHospitalSheet() {
-    final hospital = _selectedHospital!;
-    return Positioned(
-      left: 0, right: 0, bottom: 0,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Container(
-                  width: 52, height: 52,
-                  decoration: BoxDecoration(
-                    color: hospital.isEmergency ? AppTheme.dangerLight : AppTheme.secondaryLight,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(
-                    Icons.local_hospital_rounded,
-                    color: hospital.isEmergency ? AppTheme.danger : AppTheme.secondary,
-                    size: 26,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(hospital.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700), maxLines: 2),
-                      const SizedBox(height: 4),
-                      Text(hospital.type, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (hospital.distanceKm != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: AppTheme.primarySurface, borderRadius: BorderRadius.circular(8)),
-                child: Text(
-                  LocationService.instance.formatDistance(hospital.distanceKm),
-                  style: const TextStyle(color: AppTheme.primary, fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-              ),
+  Future<void> _openMaps(String query) async {
+    setState(() {
+      _isLocating = true;
+      _activeSearch = query;
+    });
+
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) throw Exception('Location permission denied');
+      }
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception('Location permissions permanently denied. Please enable in Settings.');
+      }
+
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+
+      final encoded = Uri.encodeComponent(query);
+      final url = Uri.parse(
+        'https://www.google.com/maps/search/?api=1&query=$encoded&location=${pos.latitude},${pos.longitude}',
+      );
+
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(url, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Colors.white),
+              const SizedBox(width: 10),
+              Expanded(child: Text(e.toString())),
             ],
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _callHospital(hospital.phone),
-                    icon: const Icon(Icons.phone_rounded),
-                    label: const Text('Call'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success, foregroundColor: Colors.white, padding: const EdgeInsets.all(12)),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _getDirections(hospital),
-                    icon: const Icon(Icons.directions_car_rounded),
-                    label: const Text('Directions'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white, padding: const EdgeInsets.all(12)),
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
+          backgroundColor: AppTheme.danger,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() { _isLocating = false; _activeSearch = null; });
+    }
+  }
+
+  PreferredSizeWidget _buildFixedAppBar() {
+    return AppBar(
+      backgroundColor: AppTheme.surface(context),
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: true,
+      title: Text(
+        L10n.s(context, 'nearby_hospitals'),
+        style: GoogleFonts.outfit(
+          color: AppTheme.textPrimary(context),
+          fontWeight: FontWeight.w800,
+          fontSize: 20,
+        ),
+      ),
+      leading: IconButton(
+        icon: Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary(context)),
+        onPressed: () => Navigator.maybePop(context),
+      ),
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(
+          color: AppTheme.border(context).withValues(alpha: 0.5),
+          height: 1,
         ),
       ),
     );
   }
 
-  Future<void> _callHospital(String phone) async {
-    final uri = Uri.parse('tel:$phone');
-    if (await canLaunchUrl(uri)) await launchUrl(uri);
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.background(context),
+      appBar: _buildFixedAppBar(),
+      body: CustomScrollView(
+        controller: _scrollController,
+        slivers: [
+          // ─── Emergency Banner ──────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: _buildEmergencyBanner(),
+            ),
+          ),
+
+          // ─── Section Label ─────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+              child: Text(
+                'SEARCH NEARBY',
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                  color: AppTheme.textTertiary(context),
+                ),
+              ),
+            ),
+          ),
+
+          // ─── Search Options Grid ───────────────────────────────────
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1.55,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final option = _searchOptions[index];
+                  final isLoading = _isLocating && _activeSearch == option.query;
+                  return FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: _SearchCard(
+                      option: option,
+                      isLoading: isLoading,
+                      onTap: _isLocating ? null : () => _openMaps(option.query),
+                    ),
+                  );
+                },
+                childCount: _searchOptions.length,
+              ),
+            ),
+          ),
+
+          // ─── Tips Section ──────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+              child: _buildTipsCard(context),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  Future<void> _getDirections(Hospital hospital) async {
-    final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=${hospital.latitude},${hospital.longitude}&travelmode=driving');
-    if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+  Widget _buildEmergencyBanner() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () async {
+          final uri = Uri.parse('tel:911');
+          if (await canLaunchUrl(uri)) launchUrl(uri);
+        },
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: AppTheme.dangerGradient,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.danger.withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.emergency_rounded, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Medical Emergency?',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      'Tap to call emergency services now',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'CALL',
+                  style: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 13,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTipsCard(BuildContext context) {
+    final tips = [
+      (Icons.location_on_rounded, 'Location is used only to find nearby places on Google Maps.'),
+      (Icons.wifi_rounded, 'Internet connection is required for map search.'),
+      (Icons.update_rounded, 'Results are live — they update based on your current location.'),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.surface(context),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.border(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lightbulb_outline_rounded, color: AppTheme.warning, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'HOW IT WORKS',
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                  color: AppTheme.textTertiary(context),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...tips.map((t) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(t.$1, size: 16, color: AppTheme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    t.$2,
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      color: AppTheme.textSecondary(context),
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )),
+        ],
+      ),
+    );
   }
 }
 
-enum AppMapType { standard, satellite, terrain }
+class _SearchCard extends StatelessWidget {
+  final _SearchOption option;
+  final bool isLoading;
+  final VoidCallback? onTap;
+
+  const _SearchCard({required this.option, required this.isLoading, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: AppTheme.surface(context),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isLoading ? option.color.withOpacity(0.5) : AppTheme.border(context),
+              width: isLoading ? 2 : 1,
+            ),
+            boxShadow: AppTheme.shadowSm,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: option.color.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: isLoading
+                          ? SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: option.color,
+                              ),
+                            )
+                          : Icon(option.icon, color: option.color, size: 20),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      Icons.open_in_new_rounded,
+                      size: 14,
+                      color: AppTheme.textTertiary(context),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Text(
+                  option.label,
+                  style: GoogleFonts.outfit(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary(context),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  option.description,
+                  style: GoogleFonts.outfit(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary(context),
+                    height: 1.3,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchOption {
+  final String label;
+  final String query;
+  final IconData icon;
+  final Color color;
+  final String description;
+
+  const _SearchOption({
+    required this.label,
+    required this.query,
+    required this.icon,
+    required this.color,
+    required this.description,
+  });
+}

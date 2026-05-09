@@ -10,23 +10,21 @@ class VaccineCard extends StatelessWidget {
   final VoidCallback? onMarkComplete;
 
   const VaccineCard({
-    Key? key,
+    super.key,
     required this.record,
     this.onTap,
     this.onDelete,
     this.onMarkComplete,
-  }) : super(key: key);
+  });
 
-@override
+  @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceColor = isDark ? AppTheme.darkSurface : AppTheme.surface;
-    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
-    final tertiaryColor = isDark ? AppTheme.darkTextTertiary : AppTheme.textTertiary;
-    final secondaryColor = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
-    final primaryTextColor = isDark ? AppTheme.darkTextPrimary : AppTheme.textPrimary;
-    final surfaceVariantColor = isDark ? AppTheme.darkSurfaceVariant : AppTheme.surfaceVariant;
-    
+    final surfaceColor = AppTheme.surface(context);
+    final borderColor = AppTheme.border(context);
+    final tertiaryColor = AppTheme.textTertiary(context);
+    final secondaryColor = AppTheme.textSecondary(context);
+    final primaryTextColor = AppTheme.textPrimary(context);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -35,9 +33,9 @@ class VaccineCard extends StatelessWidget {
           color: surfaceColor,
           borderRadius: BorderRadius.circular(AppTheme.radiusLg),
           border: Border.all(color: borderColor),
-          boxShadow: AppTheme.shadowMd,
+          boxShadow: AppTheme.shadowSm,
         ),
-child: Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(context),
@@ -51,8 +49,7 @@ child: Column(
 
   // ─── Header ───────────────────────────────────────────────────────────────
   Widget _buildHeader(BuildContext context) {
-    final gradient =
-    record.isCompleted ? AppTheme.successGradient : AppTheme.primaryGradient;
+    final gradient = record.isCompleted ? AppTheme.successGradient : AppTheme.primaryGradient;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -69,7 +66,7 @@ child: Column(
             height: 46,
             width: 46,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.18),
+              color: Colors.white.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             ),
             child: const Center(
@@ -99,7 +96,7 @@ child: Column(
                   Text(
                     record.doseNumber!,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.80),
+                      color: Colors.white.withValues(alpha: 0.80),
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
@@ -122,9 +119,9 @@ child: Column(
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.20),
+        color: Colors.white.withValues(alpha: 0.20),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.30), width: 1),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.30), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -151,8 +148,7 @@ child: Column(
 
   // ─── Body ─────────────────────────────────────────────────────────────────
   Widget _buildBody(BuildContext context, {required Color tertiaryColor, required Color primaryTextColor, required Color secondaryColor}) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+    final borderColor = AppTheme.border(context);
     
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -227,9 +223,9 @@ child: Column(
     );
   }
 
-Widget _divider({required Color borderColor}) => Padding(
+  Widget _divider({required Color borderColor}) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 6),
-    child: Divider(height: 1, color: borderColor),
+    child: Divider(height: 1, color: borderColor.withValues(alpha: 0.5)),
   );
 
   Widget _infoRow({
@@ -249,7 +245,7 @@ Widget _divider({required Color borderColor}) => Padding(
           height: 28,
           width: 28,
           decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.10),
+            color: iconColor.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Icon(icon, size: 14, color: iconColor),
@@ -286,17 +282,15 @@ Widget _divider({required Color borderColor}) => Padding(
     );
   }
 
-// ─── Actions ──────────────────────────────────────────────────────────────
   Widget _buildActions(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
-    final surfaceVariantColor = isDark ? AppTheme.darkSurfaceVariant : AppTheme.surfaceVariant;
+    final borderColor = AppTheme.border(context);
+    final surfaceVariantColor = AppTheme.surfaceVariant(context);
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: surfaceVariantColor,
-        border: Border(top: BorderSide(color: borderColor)),
+        border: Border(top: BorderSide(color: borderColor.withValues(alpha: 0.5))),
         borderRadius: const BorderRadius.vertical(
           bottom: Radius.circular(AppTheme.radiusLg),
         ),
@@ -338,9 +332,9 @@ Widget _divider({required Color borderColor}) => Padding(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-          border: Border.all(color: color.withOpacity(0.25)),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

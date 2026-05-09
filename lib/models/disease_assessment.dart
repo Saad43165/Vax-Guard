@@ -17,12 +17,16 @@ class DiseaseAssessmentQuestion {
   final String prompt;
   final String helper;
   final List<DiseaseAssessmentOption> options;
+  final String? dependsOnQuestionId;
+  final int? minScoreDependency;
 
   const DiseaseAssessmentQuestion({
     required this.id,
     required this.prompt,
     required this.helper,
     required this.options,
+    this.dependsOnQuestionId,
+    this.minScoreDependency,
   });
 }
 

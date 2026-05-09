@@ -8,13 +8,13 @@ class AnimatedCounter extends StatefulWidget {
   final Duration duration;
 
   const AnimatedCounter({
-    Key? key,
+    super.key,
     required this.value,
     this.style,
     this.prefix,
     this.suffix,
     this.duration = const Duration(milliseconds: 800),
-  }) : super(key: key);
+  });
 
   @override
   State<AnimatedCounter> createState() => _AnimatedCounterState();
@@ -82,13 +82,13 @@ class AnimatedProgressBar extends StatefulWidget {
   final Duration duration;
 
   const AnimatedProgressBar({
-    Key? key,
+    super.key,
     required this.progress,
     this.backgroundColor,
     this.progressColor,
     this.height = 8,
     this.duration = const Duration(milliseconds: 1000),
-  }) : super(key: key);
+  });
 
   @override
   State<AnimatedProgressBar> createState() => _AnimatedProgressBarState();

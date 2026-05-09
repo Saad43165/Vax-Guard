@@ -2,492 +2,395 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
-import '../services/database_service.dart';
+import '../models/vaccine_record.dart';
 import '../models/history_entry.dart';
+import '../l10n/app_localizations.dart';
 
 class PdfService {
-  static PdfService? _instance;
-
   PdfService._();
 
-  static PdfService get instance {
-    _instance ??= PdfService._();
-    return _instance!;
-  }
+  static final _dateFormat = DateFormat('dd MMM yyyy');
+  static final _dateTimeFormat = DateFormat('dd MMM yyyy, hh:mm a');
 
-  Future<pw.Document> generateVaccineRecordPdf() async {
+  // ─── Vaccine Report ──────────────────────────────────────────────────────
+  static Future<pw.Document> generateVaccineReport({
+    required List<VaccineRecord> records,
+    required AppLocalizations l10n,
+  }) async {
     final pdf = pw.Document();
-    final db = DatabaseService.instance;
-    final records = await db.getAllVaccineRecords();
-    final pending = await db.getUpcomingVaccines();
-    final history = await db.getHistoryEntries();
-    final assessments = history
-        .where((entry) => entry.type != HistoryEntryType.vaccine)
-        .toList();
-    final urgentAssessments = assessments
-        .where(
-          (e) =>
-              (e.riskScore ?? 0) >= 70 ||
-              e.statusLabel.toLowerCase().contains('urgent') ||
-              e.statusLabel.toLowerCase().contains('high'),
-        )
-        .take(5)
-        .toList();
-    final total = db.totalVaccines;
-    final completedCount = db.completedVaccines;
-    final percentage = db.completionPercentage;
-
-    final dateFormat = DateFormat('MMMM dd, yyyy');
-    final dateTimeFormat = DateFormat('MMMM dd, yyyy HH:mm');
+    final now = DateTime.now();
+    final dateStr = _dateTimeFormat.format(now);
+    final docId = 'VG-VAC-${now.millisecondsSinceEpoch.toString().substring(7)}';
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(40),
-        header: (context) => _buildHeader(context, 'Vaccination Record Report'),
-        footer: (context) => _buildFooter(context),
-        build: (context) => [
-          pw.Container(
-            padding: const pw.EdgeInsets.all(20),
-            decoration: pw.BoxDecoration(
-              color: PdfColor.fromInt(0xFF2563EB),
-              borderRadius: pw.BorderRadius.circular(8),
-            ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'VaxGuard',
-                      style: pw.TextStyle(
-                        color: PdfColors.white,
-                        fontSize: 24,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.SizedBox(height: 4),
-                    pw.Text(
-                      'Vaccination Record Certificate',
-                      style: const pw.TextStyle(
-                        color: PdfColors.white,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-                pw.Container(
-                  padding: const pw.EdgeInsets.all(12),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.white,
-                    borderRadius: pw.BorderRadius.circular(8),
-                  ),
-                  child: pw.Column(
-                    children: [
-                      pw.Text(
-                        '${percentage.toStringAsFixed(0)}%',
-                        style: pw.TextStyle(
-                          color: PdfColor.fromInt(0xFF2563EB),
-                          fontSize: 20,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Complete',
-                        style: const pw.TextStyle(
-                          color: PdfColors.grey700,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+        margin: const pw.EdgeInsets.all(32),
+        header: (ctx) => _buildHeader(l10n.translate('vaccine_records').toUpperCase(), docId, dateStr, l10n),
+        footer: (ctx) => _buildFooter(ctx, l10n),
+        build: (ctx) => [
           pw.SizedBox(height: 20),
-          pw.Container(
-            padding: const pw.EdgeInsets.all(16),
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: PdfColors.grey300),
-              borderRadius: pw.BorderRadius.circular(8),
-            ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatBox('Total', total.toString(), PdfColors.blue),
-                _buildStatBox('Completed', completedCount.toString(), PdfColors.green),
-                _buildStatBox('Pending', pending.length.toString(), PdfColors.orange),
-              ],
-            ),
-          ),
-          pw.SizedBox(height: 30),
           pw.Text(
-            'Emergency Summary',
-            style: pw.TextStyle(
-              fontSize: 18,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColor.fromInt(0xFF991B1B),
-            ),
+            '${l10n.translate('total')}: ${records.length}  •  ${l10n.translate('completed')}: ${records.where((r) => r.isCompleted).length}  •  ${l10n.translate('pending')}: ${records.where((r) => !r.isCompleted).length}',
+            style: const pw.TextStyle(fontSize: 12),
           ),
-          pw.SizedBox(height: 10),
-          if (urgentAssessments.isEmpty)
-            pw.Container(
-              padding: const pw.EdgeInsets.all(12),
-              decoration: pw.BoxDecoration(
-                color: PdfColors.green50,
-                borderRadius: pw.BorderRadius.circular(8),
-              ),
-              child: pw.Text(
-                'No recent urgent findings in saved assessments.',
-                style: const pw.TextStyle(fontSize: 12),
-              ),
-            )
-          else
-            pw.Column(
-              children: urgentAssessments
-                  .map(
-                    (e) => pw.Container(
-                      width: double.infinity,
-                      margin: const pw.EdgeInsets.only(bottom: 8),
-                      padding: const pw.EdgeInsets.all(10),
-                      decoration: pw.BoxDecoration(
-                        color: PdfColors.red50,
-                        borderRadius: pw.BorderRadius.circular(8),
-                        border: pw.Border.all(color: PdfColors.red200),
-                      ),
-                      child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text(
-                            '${_assessmentTypeLabel(e.type)} • ${e.statusLabel}',
-                            style: pw.TextStyle(
-                              fontWeight: pw.FontWeight.bold,
-                              color: PdfColors.red800,
-                            ),
-                          ),
-                          pw.SizedBox(height: 4),
-                          pw.Text(e.title, style: const pw.TextStyle(fontSize: 11)),
-                          pw.Text(e.summary, style: const pw.TextStyle(fontSize: 10)),
-                        ],
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          pw.SizedBox(height: 24),
-          pw.Text(
-            'Vaccination History',
-            style: pw.TextStyle(
-              fontSize: 18,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColor.fromInt(0xFF1E293B),
-            ),
-          ),
-          pw.SizedBox(height: 12),
+          pw.SizedBox(height: 16),
+          pw.Divider(thickness: 1),
+          pw.SizedBox(height: 16),
           if (records.isEmpty)
-            pw.Container(
-              padding: const pw.EdgeInsets.all(30),
-              decoration: pw.BoxDecoration(
-                color: PdfColors.grey100,
-                borderRadius: pw.BorderRadius.circular(8),
-              ),
-              child: pw.Center(
-                child: pw.Text(
-                  'No vaccination records found.\nAdd your vaccine records to generate a certificate.',
-                  textAlign: pw.TextAlign.center,
-                  style: const pw.TextStyle(
-                    color: PdfColors.grey600,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            )
-          else
-            pw.TableHelper.fromTextArray(
-              headers: ['Vaccine', 'Dose', 'Date', 'Location', 'Status'],
-              headerStyle: pw.TextStyle(
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.white,
-              ),
-              headerDecoration: const pw.BoxDecoration(
-                color: PdfColor.fromInt(0xFF2563EB),
-              ),
-              headerPadding: const pw.EdgeInsets.all(8),
-              cellPadding: const pw.EdgeInsets.all(8),
-              cellAlignments: {
-                0: pw.Alignment.centerLeft,
-                1: pw.Alignment.center,
-                2: pw.Alignment.center,
-                3: pw.Alignment.centerLeft,
-                4: pw.Alignment.center,
-              },
-              data: records.map((record) => [
-                record.vaccineName,
-                record.doseNumber ?? 'N/A',
-                dateFormat.format(record.vaccinationDate),
-                record.clinicName ?? 'N/A',
-                record.isCompleted ? '✓ Completed' : '○ Pending',
-              ]).toList(),
-            ),
-          pw.SizedBox(height: 30),
-          if (records.isNotEmpty) ...[
-            pw.Text(
-              'Certificate Details',
-              style: pw.TextStyle(
-                fontSize: 18,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColor.fromInt(0xFF1E293B),
-              ),
-            ),
-            pw.SizedBox(height: 12),
-            pw.Container(
-              padding: const pw.EdgeInsets.all(16),
-              decoration: pw.BoxDecoration(
-                border: pw.Border.all(color: PdfColors.grey300),
-                borderRadius: pw.BorderRadius.circular(8),
-              ),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  _buildDetailRow('Report Generated', dateTimeFormat.format(DateTime.now())),
-                  pw.SizedBox(height: 8),
-                  _buildDetailRow('Total Vaccinations', total.toString()),
-                  pw.SizedBox(height: 8),
-                  _buildDetailRow('Completion Rate', '${percentage.toStringAsFixed(1)}%'),
-                  pw.SizedBox(height: 8),
-                  _buildDetailRow('Next Scheduled Doses', pending.length.toString()),
-                ],
-              ),
-            ),
-          ],
-          pw.SizedBox(height: 24),
-          pw.Text(
-            'Assessment Summary',
-            style: pw.TextStyle(
-              fontSize: 18,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColor.fromInt(0xFF1E293B),
-            ),
-          ),
-          pw.SizedBox(height: 10),
-          if (assessments.isEmpty)
-            pw.Text(
-              'No assessment records available.',
-              style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey600),
-            )
-          else ...[
-            _buildAssessmentTypeSection(
-              'Health Assessments',
-              assessments.where((e) => e.type == HistoryEntryType.triage).toList(),
-              dateFormat,
-            ),
-            _buildAssessmentTypeSection(
-              'Animal Bite Assessments',
-              assessments.where((e) => e.type == HistoryEntryType.animalBite).toList(),
-              dateFormat,
-            ),
-            _buildAssessmentTypeSection(
-              'Symptom Checks',
-              assessments
-                  .where((e) => e.type == HistoryEntryType.symptomChecker)
-                  .toList(),
-              dateFormat,
-            ),
-            _buildAssessmentTypeSection(
-              'Disease-Specific Checks',
-              assessments
-                  .where((e) => e.type == HistoryEntryType.diseaseAssessment)
-                  .toList(),
-              dateFormat,
-            ),
-          ],
+            pw.Center(child: pw.Text(l10n.translate('no_history_yet'), style: const pw.TextStyle(fontSize: 14))),
+          ...records.map((r) => _buildVaccineEntry(r, l10n)),
         ],
       ),
     );
-
     return pdf;
   }
 
-  pw.Widget _buildHeader(pw.Context context, String title) {
+  static pw.Widget _buildVaccineEntry(VaccineRecord r, AppLocalizations l10n) {
     return pw.Container(
-      margin: const pw.EdgeInsets.only(bottom: 20),
-      child: pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-        children: [
-          pw.Text(
-            title,
-            style: const pw.TextStyle(
-              fontSize: 12,
-              color: PdfColors.grey600,
-            ),
-          ),
-          pw.Text(
-            'Page ${context.pageNumber} of ${context.pagesCount}',
-            style: const pw.TextStyle(
-              fontSize: 12,
-              color: PdfColors.grey600,
-            ),
-          ),
-        ],
+      margin: const pw.EdgeInsets.only(bottom: 16),
+      padding: const pw.EdgeInsets.all(14),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(width: 0.5, color: PdfColors.grey400),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
       ),
-    );
-  }
-
-  pw.Widget _buildFooter(pw.Context context) {
-    return pw.Container(
-      margin: const pw.EdgeInsets.only(top: 10),
-      child: pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-        children: [
-          pw.Text(
-            'Generated by VaxGuard App',
-            style: const pw.TextStyle(
-              fontSize: 10,
-              color: PdfColors.grey600,
-            ),
-          ),
-          pw.Text(
-            DateFormat('yyyy-MM-dd').format(DateTime.now()),
-            style: const pw.TextStyle(
-              fontSize: 10,
-              color: PdfColors.grey600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  pw.Widget _buildStatBox(String label, String value, PdfColor color) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(12),
-      child: pw.Column(
-        children: [
-          pw.Text(
-            value,
-            style: pw.TextStyle(
-              fontSize: 24,
-              fontWeight: pw.FontWeight.bold,
-              color: color,
-            ),
-          ),
-          pw.SizedBox(height: 4),
-          pw.Text(
-            label,
-            style: const pw.TextStyle(
-              fontSize: 10,
-              color: PdfColors.grey700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  pw.Widget _buildDetailRow(String label, String value) {
-    return pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-      children: [
-        pw.Text(
-          label,
-          style: const pw.TextStyle(
-            fontSize: 12,
-            color: PdfColors.grey700,
-          ),
-        ),
-        pw.Text(
-          value,
-          style: pw.TextStyle(
-            fontSize: 12,
-            fontWeight: pw.FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> shareVaccineRecordsPdf() async {
-    final pdf = await generateVaccineRecordPdf();
-    await Printing.sharePdf(
-      bytes: await pdf.save(),
-      filename: 'VaxGuard_Report_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
-    );
-  }
-
-  Future<void> printVaccineRecordsPdf() async {
-    final pdf = await generateVaccineRecordPdf();
-    await Printing.layoutPdf(
-      onLayout: (format) => pdf.save(),
-      name: 'VaxGuard Report',
-    );
-  }
-
-  String _assessmentTypeLabel(HistoryEntryType type) {
-    switch (type) {
-      case HistoryEntryType.triage:
-        return 'General';
-      case HistoryEntryType.animalBite:
-        return 'Animal Bite';
-      case HistoryEntryType.symptomChecker:
-        return 'Symptom';
-      case HistoryEntryType.diseaseAssessment:
-        return 'Disease';
-      case HistoryEntryType.vaccine:
-        return 'Vaccine';
-    }
-  }
-
-  pw.Widget _buildAssessmentTypeSection(
-    String title,
-    List<HistoryEntry> items,
-    DateFormat format,
-  ) {
-    if (items.isEmpty) {
-      return pw.Container(
-        margin: const pw.EdgeInsets.only(bottom: 10),
-        child: pw.Text(
-          '$title: none',
-          style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600),
-        ),
-      );
-    }
-    return pw.Container(
-      margin: const pw.EdgeInsets.only(bottom: 10),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text(
-            title,
-            style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(r.vaccineName, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.Container(
+                padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: pw.BoxDecoration(
+                  color: r.isCompleted ? PdfColors.green100 : PdfColors.orange100,
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                ),
+                child: pw.Text(
+                  l10n.translate(r.isCompleted ? 'completed' : 'pending').toUpperCase(),
+                  style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: r.isCompleted ? PdfColors.green800 : PdfColors.orange800),
+                ),
+              ),
+            ],
           ),
-          pw.SizedBox(height: 6),
-          ...items.take(5).map(
-            (entry) => pw.Container(
-              margin: const pw.EdgeInsets.only(bottom: 6),
-              padding: const pw.EdgeInsets.all(8),
-              decoration: pw.BoxDecoration(
-                borderRadius: pw.BorderRadius.circular(6),
-                border: pw.Border.all(color: PdfColors.grey300),
+          pw.SizedBox(height: 8),
+          pw.Row(children: [
+            pw.Text('${l10n.translate('today')}: ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
+            pw.Text(_dateFormat.format(r.vaccinationDate), style: const pw.TextStyle(fontSize: 11)),
+            if (r.nextDoseDate != null) ...[
+              pw.SizedBox(width: 24),
+              pw.Text('${l10n.translate('next_step')}: ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
+              pw.Text(_dateFormat.format(r.nextDoseDate!), style: const pw.TextStyle(fontSize: 11)),
+            ],
+          ]),
+        ],
+      ),
+    );
+  }
+
+  // ─── Assessments Report ──────────────────────────────────────────────────
+  static Future<pw.Document> generateAssessmentsReport({
+    required List<HistoryEntry> entries,
+    required AppLocalizations l10n,
+  }) async {
+    final pdf = pw.Document();
+    final now = DateTime.now();
+    final dateStr = _dateTimeFormat.format(now);
+    final docId = 'VG-ASS-${now.millisecondsSinceEpoch.toString().substring(7)}';
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        header: (ctx) => _buildHeader(l10n.translate('assessments').toUpperCase(), docId, dateStr, l10n),
+        footer: (ctx) => _buildFooter(ctx, l10n),
+        build: (ctx) => [
+          pw.SizedBox(height: 20),
+          pw.Text(
+            '${l10n.translate('total')}: ${entries.length}',
+            style: const pw.TextStyle(fontSize: 12),
+          ),
+          pw.SizedBox(height: 16),
+          pw.Divider(thickness: 1),
+          pw.SizedBox(height: 16),
+          if (entries.isEmpty)
+            pw.Center(child: pw.Text(l10n.translate('no_history_yet'), style: const pw.TextStyle(fontSize: 14))),
+          ...entries.map((e) => _buildHistoryEntry(e, l10n)),
+        ],
+      ),
+    );
+    return pdf;
+  }
+
+  static pw.Widget _buildHistoryEntry(HistoryEntry e, AppLocalizations l10n) {
+    return pw.Container(
+      margin: const pw.EdgeInsets.only(bottom: 16),
+      padding: const pw.EdgeInsets.all(14),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(width: 0.5, color: PdfColors.grey400),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Expanded(
+                child: pw.Text(e.title, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
               ),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    '${entry.title} • ${entry.statusLabel}',
-                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
-                  ),
-                  pw.Text(
-                    '${entry.summary}\nDate: ${format.format(entry.createdAt)}${entry.riskScore != null ? ' • Score ${entry.riskScore}%' : ''}',
-                    style: const pw.TextStyle(fontSize: 9),
-                  ),
-                ],
-              ),
-            ),
+              pw.Text(e.type.name.toUpperCase(), style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
+            ],
+          ),
+          pw.SizedBox(height: 8),
+          pw.Text('${l10n.translate('today')}: ${_dateFormat.format(e.createdAt)}', style: const pw.TextStyle(fontSize: 11)),
+          if (e.summary.isNotEmpty) ...[
+            pw.SizedBox(height: 4),
+            pw.Text('${l10n.translate('clinical_findings')}: ${e.summary}', style: const pw.TextStyle(fontSize: 11)),
+          ],
+          if (e.riskScore != null) ...[
+            pw.SizedBox(height: 4),
+            pw.Text('${l10n.translate('probability_score')}: ${e.riskScore}%', style: const pw.TextStyle(fontSize: 11)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ─── Header & Footer ─────────────────────────────────────────────────────
+  static pw.Widget _buildHeader(String title, String docId, String dateStr, AppLocalizations l10n) {
+    return pw.Container(
+      margin: const pw.EdgeInsets.only(bottom: 16),
+      padding: const pw.EdgeInsets.only(bottom: 12),
+      decoration: const pw.BoxDecoration(
+        border: pw.Border(bottom: pw.BorderSide(width: 2)),
+      ),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text('VAX-GUARD MEDICAL REPORT', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+              pw.Text(title, style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey600)),
+            ],
+          ),
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              pw.Text('DOC NO: $docId', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+              pw.Text('${l10n.translate('today').toUpperCase()}: $dateStr', style: const pw.TextStyle(fontSize: 10)),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  static pw.Widget _buildFooter(pw.Context ctx, AppLocalizations l10n) {
+    return pw.Container(
+      margin: const pw.EdgeInsets.only(top: 12),
+      padding: const pw.EdgeInsets.only(top: 8),
+      decoration: const pw.BoxDecoration(
+        border: pw.Border(top: pw.BorderSide(width: 0.5, color: PdfColors.grey400)),
+      ),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(
+            'Disclaimer: AI generated summary. Not a diagnosis.',
+            style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey500),
+          ),
+          pw.Text('${ctx.pageNumber} / ${ctx.pagesCount}', style: const pw.TextStyle(fontSize: 9)),
+        ],
+      ),
+    );
+  }
+
+  // ─── Static Assessment Document ──────────────────────────────────────────
+  static Future<pw.Document> buildAssessmentDocument({
+    required String title,
+    required String subtitle,
+    required String severity,
+    required int? score,
+    required String summary,
+    required List<String> actions,
+    required List<String> drivers,
+    String? details,
+    required Map<String, String> answers,
+    required AppLocalizations l10n,
+  }) async {
+    final pdf = pw.Document();
+    final now = DateTime.now();
+    final dateStr = _dateTimeFormat.format(now);
+    final docId = 'VG-${now.millisecondsSinceEpoch.toString().substring(7)}';
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              _buildHeader(l10n.translate('risk_assessment').toUpperCase(), docId, dateStr, l10n),
+              pw.SizedBox(height: 20),
+              pw.Container(
+                padding: const pw.EdgeInsets.all(15),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(width: 1),
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(l10n.translate('assessments').toUpperCase(), style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                        pw.Text(subtitle),
+                        pw.SizedBox(height: 10),
+                        pw.Text(l10n.translate('critical_risk').toUpperCase(), style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                        pw.Text(severity, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                    if (score != null)
+                      pw.Column(
+                        children: [
+                          pw.Text('$score%', style: pw.TextStyle(fontSize: 30, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(l10n.translate('probability_score').toUpperCase(), style: const pw.TextStyle(fontSize: 8)),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 20),
+              pw.Text(l10n.translate('clinical_findings').toUpperCase(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 5),
+              pw.Text(summary),
+              if (details != null && details.isNotEmpty) ...[
+                pw.SizedBox(height: 15),
+                pw.Text(l10n.translate('additional_details').toUpperCase(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+                pw.Text(details, style: pw.TextStyle(fontStyle: pw.FontStyle.italic, fontSize: 10, color: PdfColors.grey700)),
+              ],
+              pw.SizedBox(height: 20),
+              if (actions.isNotEmpty) ...[
+                pw.Text(l10n.translate('recommended_actions').toUpperCase(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                pw.Divider(),
+                ...actions.map((a) => pw.Bullet(text: a)),
+              ],
+              pw.Spacer(),
+              pw.Text(
+                'Disclaimer: Not a clinical diagnosis. Consult a doctor.',
+                style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey500),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    return pdf;
+  }
+
+  // ─── Full Report ─────────────────────────────────────────────────────────
+  static Future<pw.Document> generateFullReport({
+    required List<VaccineRecord> records,
+    required List<HistoryEntry> history,
+    required AppLocalizations l10n,
+  }) async {
+    final pdf = pw.Document();
+    final now = DateTime.now();
+    final dateStr = _dateTimeFormat.format(now);
+    final docId = 'VG-FULL-${now.millisecondsSinceEpoch.toString().substring(7)}';
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        header: (ctx) => _buildHeader(l10n.translate('complete_health_report').toUpperCase(), docId, dateStr, l10n),
+        footer: (ctx) => _buildFooter(ctx, l10n),
+        build: (ctx) => [
+          pw.SizedBox(height: 20),
+          pw.Header(level: 0, text: l10n.translate('vaccine_records').toUpperCase()),
+          pw.Divider(thickness: 1),
+          pw.SizedBox(height: 10),
+          if (records.isEmpty)
+            pw.Text(l10n.translate('no_history_yet'))
+          else
+            ...records.map((r) => _buildVaccineEntry(r, l10n)),
+          
+          pw.SizedBox(height: 30),
+          pw.Header(level: 0, text: l10n.translate('assessments').toUpperCase()),
+          pw.Divider(thickness: 1),
+          pw.SizedBox(height: 10),
+          if (history.isEmpty)
+            pw.Text(l10n.translate('no_history_yet'))
+          else
+            ...history.map((e) => _buildHistoryEntry(e, l10n)),
+        ],
+      ),
+    );
+    return pdf;
+  }
+
+  // ─── Daily Report ────────────────────────────────────────────────────────
+  static Future<pw.Document> generateDailyReport({
+    required List<VaccineRecord> records,
+    required List<HistoryEntry> history,
+    required AppLocalizations l10n,
+  }) async {
+    final pdf = pw.Document();
+    final now = DateTime.now();
+    final dateStr = _dateFormat.format(now);
+    final docId = 'VG-DAY-${now.millisecondsSinceEpoch.toString().substring(7)}';
+
+    // Filter for today only
+    final today = DateTime(now.year, now.month, now.day);
+    final todayRecords = records.where((r) => 
+      r.vaccinationDate.year == today.year && 
+      r.vaccinationDate.month == today.month && 
+      r.vaccinationDate.day == today.day
+    ).toList();
+    
+    final todayHistory = history.where((e) => 
+      e.createdAt.year == today.year && 
+      e.createdAt.month == today.month && 
+      e.createdAt.day == today.day
+    ).toList();
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        header: (ctx) => _buildHeader('${l10n.translate('daily_health_log').toUpperCase()} - $dateStr', docId, dateStr, l10n),
+        footer: (ctx) => _buildFooter(ctx, l10n),
+        build: (ctx) => [
+          pw.SizedBox(height: 20),
+          pw.Text('${l10n.translate('summary_for')} $dateStr', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 20),
+          
+          if (todayRecords.isNotEmpty) ...[
+            pw.Header(level: 1, text: l10n.translate('vaccine_records').toUpperCase()),
+            ...todayRecords.map((r) => _buildVaccineEntry(r, l10n)),
+            pw.SizedBox(height: 20),
+          ],
+          
+          if (todayHistory.isNotEmpty) ...[
+            pw.Header(level: 1, text: l10n.translate('assessments').toUpperCase()),
+            ...todayHistory.map((e) => _buildHistoryEntry(e, l10n)),
+          ],
+
+          if (todayRecords.isEmpty && todayHistory.isEmpty)
+            pw.Center(
+              child: pw.Padding(
+                padding: const pw.EdgeInsets.all(40),
+                child: pw.Text(l10n.translate('no_activity_today'), style: pw.TextStyle(fontSize: 14, color: PdfColors.grey600)),
+              ),
+            ),
+        ],
+      ),
+    );
+    return pdf;
   }
 }

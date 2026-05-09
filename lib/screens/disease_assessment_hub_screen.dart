@@ -1,109 +1,156 @@
 import 'package:flutter/material.dart';
-
+import 'package:google_fonts/google_fonts.dart';
 import '../core/theme.dart';
 import '../services/disease_assessment_service.dart';
+import '../utils/l10n_helper.dart';
+import '../models/disease_assessment.dart';
 import 'disease_assessment_quiz_screen.dart';
 
-class DiseaseAssessmentHubScreen extends StatelessWidget {
+class DiseaseAssessmentHubScreen extends StatefulWidget {
   const DiseaseAssessmentHubScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final assessments = DiseaseAssessmentService.definitions;
+  State<DiseaseAssessmentHubScreen> createState() => _DiseaseAssessmentHubScreenState();
+}
 
+class _DiseaseAssessmentHubScreenState extends State<DiseaseAssessmentHubScreen>
+    with TickerProviderStateMixin {
+  late TabController _tabController;
+  int _selectedIndex = 0;
+  final List<String> _categories = ['all_cat', 'vector_cat', 'respiratory_cat', 'gi_fluid_cat'];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: _categories.length, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() => _selectedIndex = _tabController.index);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  List<DiseaseAssessmentDefinition> get _filtered {
+    final all = DiseaseAssessmentService.definitions;
+    switch (_selectedIndex) {
+      case 1: // Vector
+        return all.where((d) => ['dengue', 'malaria', 'hantavirus'].contains(d.id)).toList();
+      case 2: // Respiratory
+        return all.where((d) => ['respiratory'].contains(d.id)).toList();
+      case 3: // GI & Fluid
+        return all.where((d) => ['typhoid', 'cholera', 'dehydration'].contains(d.id)).toList();
+      default:
+        return all;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final assessments = _filtered;
     return Scaffold(
-      backgroundColor: AppTheme.background,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 220,
-            pinned: true,
-            backgroundColor: AppTheme.primary,
-            foregroundColor: Colors.white,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_rounded),
-              onPressed: () => Navigator.of(context).maybePop(),
-            ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: AppTheme.deepBlueGradient,
-                ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 20, 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Icon(
-                            Icons.health_and_safety_rounded,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        const Text(
-                          'Disease Assessment Hub',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.8,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Choose the right assessment for your symptoms. Each check explains what it screens for, what warning signs matter, and when to seek help.',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.84),
-                            fontSize: 14,
-                            height: 1.5,
-                          ),
-                        ),
-                      ],
-                    ),
+      backgroundColor: AppTheme.background(context),
+      appBar: _buildFixedAppBar(context),
+      body: TabBarView(
+        controller: _tabController,
+        children: _categories.map((category) => ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+          itemCount: assessments.length + 1,
+          itemBuilder: (context, index) {
+            if (index == 0) return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _buildInfoBanner(context),
+            );
+            final a = assessments[index - 1];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _AssessmentTile(
+                definition: a,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DiseaseAssessmentQuizScreen(definitionId: a.id),
                   ),
                 ),
               ),
+            );
+          },
+        )).toList(),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildFixedAppBar(BuildContext context) {
+    return AppBar(
+      backgroundColor: AppTheme.primary,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: true,
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Image.asset('assets/images/appbar_icon.png', height: 26, fit: BoxFit.contain),
+          const SizedBox(width: 10),
+          Text(
+            L10n.s(context, 'risk_assessment'),
+            style: GoogleFonts.outfit(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 18,
             ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _buildGuideCard(),
-                const SizedBox(height: 18),
-                ...assessments.map(
-                  (assessment) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: _AssessmentCard(
-                      title: assessment.title,
-                      subtitle: assessment.subtitle,
-                      summary: assessment.summary,
-                      guidance: assessment.guidance,
-                      icon: assessment.icon,
-                      gradient: assessment.gradient,
-                      accentColor: assessment.accentColor,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => DiseaseAssessmentQuizScreen(
-                              definitionId: assessment.id,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ]),
+        ],
+      ),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+        onPressed: () => Navigator.maybePop(context),
+      ),
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(48),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surface(context),
+            border: Border(bottom: BorderSide(color: AppTheme.border(context), width: 0.5)),
+          ),
+          child: TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            indicatorColor: AppTheme.primary,
+            indicatorWeight: 3,
+            labelColor: AppTheme.primary,
+            unselectedLabelColor: AppTheme.textSecondary(context),
+            labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 13),
+            unselectedLabelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13),
+            tabs: _categories.map((c) => Tab(text: L10n.s(context, c))).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatPill(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 13),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: GoogleFonts.outfit(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -111,77 +158,32 @@ class DiseaseAssessmentHubScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildGuideCard() {
-    final guideItems = [
-      'Each assessment focuses on one disease pattern so users do not mix features up.',
-      'Results are guidance only and are saved separately in history for easy review.',
-      'Urgent warning signs are highlighted before and after each check.',
-    ];
-
+  Widget _buildInfoBanner(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppTheme.border),
-        boxShadow: AppTheme.shadowMd,
+        color: AppTheme.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppTheme.primarySurface,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.auto_awesome_rounded,
-                  color: AppTheme.primary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'How To Use This Hub',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.info_outline_rounded, color: AppTheme.primary, size: 20),
           ),
-          const SizedBox(height: 14),
-          ...guideItems.map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    margin: const EdgeInsets.only(top: 7, right: 10),
-                    decoration: const BoxDecoration(
-                      color: AppTheme.primary,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      item,
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
-                        height: 1.5,
-                      ),
-                    ),
-                  ),
-                ],
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              L10n.s(context, 'assessment_hub_info'),
+              style: GoogleFonts.outfit(
+                fontSize: 12.5,
+                color: AppTheme.textSecondary(context),
+                height: 1.5,
               ),
             ),
           ),
@@ -191,136 +193,126 @@ class DiseaseAssessmentHubScreen extends StatelessWidget {
   }
 }
 
-class _AssessmentCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String summary;
-  final String guidance;
-  final IconData icon;
-  final LinearGradient gradient;
-  final Color accentColor;
+class _AssessmentTile extends StatelessWidget {
+  final DiseaseAssessmentDefinition definition;
   final VoidCallback onTap;
 
-  const _AssessmentCard({
-    required this.title,
-    required this.subtitle,
-    required this.summary,
-    required this.guidance,
-    required this.icon,
-    required this.gradient,
-    required this.accentColor,
-    required this.onTap,
-  });
+  const _AssessmentTile({required this.definition, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: onTap,
-      child: Ink(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppTheme.border),
-          boxShadow: AppTheme.shadowMd,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                gradient: gradient,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Ink(
+          decoration: BoxDecoration(
+            color: AppTheme.surface(context),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.border(context)),
+            boxShadow: AppTheme.shadowSm,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Icon
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: definition.gradient,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(definition.icon, color: Colors.white, size: 26),
                 ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(icon, color: Colors.white, size: 28),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 18,
-                          ),
+                const SizedBox(width: 14),
+                // Text
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        L10n.s(context, definition.title),
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textPrimary(context),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.84),
-                            fontSize: 13,
-                          ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        L10n.s(context, definition.subtitle),
+                        style: GoogleFonts.outfit(
+                          fontSize: 12.5,
+                          color: AppTheme.textSecondary(context),
                         ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.arrow_forward_rounded,
-                    color: Colors.white,
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    summary,
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: accentColor.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.info_outline_rounded,
-                          color: accentColor,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            guidance,
-                            style: TextStyle(
-                              color: accentColor,
-                              fontWeight: FontWeight.w600,
-                              height: 1.4,
+                      ),
+                      const SizedBox(height: 8),
+                      // Question count badge
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: definition.accentColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${definition.questions.length} ${L10n.s(context, "questions_label")}',
+                              style: GoogleFonts.outfit(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: definition.accentColor,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppTheme.border(context).withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.warning_amber_rounded,
+                                    size: 11, color: AppTheme.textTertiary(context)),
+                                const SizedBox(width: 3),
+                                Text(
+                                  '${definition.urgentFlags.length} ${L10n.s(context, "flags_label")}',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.textTertiary(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                // Arrow
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: definition.accentColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    color: definition.accentColor,
+                    size: 20,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

@@ -19,15 +19,22 @@ class AppConstants {
   static const String healthTipsRoute = '/health-tips';
   static const String symptomCheckerRoute = '/symptom-checker';
   static const String assessmentsRoute = '/assessments';
+  static const String historyRoute = '/history';
   static const String pdfViewRoute = '/pdf-view';
   static const String medicineReminderRoute = '/medicine-reminder';
   static const String profileRoute = '/profile';
   static const String emergencyModeRoute = '/emergency-mode';
+  static const String assessmentResultRoute = '/assessment-result';
+  static const String liveOutbreaksRoute = '/live-outbreaks';
+  static const String onboardingRoute = '/onboarding';
+  static const String diseaseLibraryRoute = '/disease-library';
 
   // Notification IDs
   static const int vaccineReminderNotificationId = 1001;
   static const String vaccineReminderChannelId = 'vaccine_reminders';
   static const String vaccineReminderChannelName = 'Vaccine Reminders';
+  static const String outbreakAlertChannelId = 'outbreak_alerts';
+  static const String outbreakAlertChannelName = 'Outbreak Alerts';
 
   // Triage Risk Thresholds
   static const int lowRiskThreshold = 25;

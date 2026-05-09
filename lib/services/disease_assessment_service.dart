@@ -6,29 +6,103 @@ import '../models/disease_assessment.dart';
 class DiseaseAssessmentService {
   DiseaseAssessmentService._();
 
-  static const List<DiseaseAssessmentDefinition> definitions = [
+  static final List<DiseaseAssessmentDefinition> definitions = [
+    DiseaseAssessmentDefinition(
+      id: 'hantavirus',
+      title: 'hantavirus_title',
+      subtitle: 'hantavirus_subtitle',
+      summary: 'hantavirus_desc',
+      disclaimer: 'hantavirus_disclaimer',
+      guidance: 'hantavirus_guidance',
+      icon: Icons.pets_rounded,
+      accentColor: AppTheme.danger,
+      gradient: AppTheme.dangerGradient,
+      urgentFlags: [
+        'severe_breathlessness',
+        'body_aches',
+        'confirmed_exposure',
+      ],
+      defaultActions: [
+        'contact_doctor_imm',
+        'monitor_symptoms',
+        'avoid_vulnerable',
+      ],
+      questions: [
+        DiseaseAssessmentQuestion(
+          id: 'exposure',
+          prompt: 'Recent rodent exposure history?',
+          helper: 'Have you cleaned or stayed in rodent-infested areas (sheds, barns, cabins)?',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'No exposure',
+              score: 0,
+              description: 'No known contact with rodents or droppings.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Possible exposure',
+              score: 25,
+              description: 'Stayed in a rural or dusty area recently.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Known exposure',
+              score: 60,
+              description: 'Cleaned a space with visible rodent droppings.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Direct contact',
+              score: 90,
+              description: 'Handled rodents or their waste directly.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'lung_symptoms',
+          prompt: 'Any breathing difficulties?',
+          helper: 'Hantavirus often targets the lungs (HPS).',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'Normal breathing',
+              score: 0,
+              description: 'No respiratory issues.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Mild cough',
+              score: 20,
+              description: 'Occasional dry cough.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Shortness of breath',
+              score: 70,
+              description: 'Harder to breathe during activity.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Severe breathlessness',
+              score: 100,
+              description: 'Struggling to breathe even at rest.',
+            ),
+          ],
+        ),
+      ],
+    ),
     DiseaseAssessmentDefinition(
       id: 'dengue',
-      title: 'Dengue Check',
-      subtitle: 'Fever with mosquito exposure',
-      summary:
-          'Screens for dengue warning signs using symptom severity and exposure history.',
-      disclaimer:
-          'This does not confirm dengue. Use it to identify warning signs and when to seek care.',
-      guidance:
-          'Helpful when you have fever, body aches, rash, or recent mosquito exposure.',
+      title: 'dengue_title',
+      subtitle: 'dengue_subtitle',
+      summary: 'dengue_desc',
+      disclaimer: 'dengue_disclaimer',
+      guidance: 'dengue_guidance',
       icon: Icons.bug_report_rounded,
       accentColor: AppTheme.danger,
       gradient: AppTheme.dangerGradient,
       urgentFlags: [
-        'Severe abdominal pain',
-        'Bleeding, fainting, or repeated vomiting',
-        'Unable to drink or worsening weakness',
+        'abdominal_pain_severe',
+        'bleeding_signs',
+        'nausea_vomiting',
       ],
       defaultActions: [
-        'Drink oral fluids regularly unless a clinician told you otherwise.',
-        'Avoid self-medicating with NSAIDs unless advised by a clinician.',
-        'Track fever, urine output, and any new bleeding signs.',
+        'rest_hydration',
+        'monitor_symptoms',
+        'avoid_vulnerable',
       ],
       questions: [
         DiseaseAssessmentQuestion(
@@ -116,6 +190,8 @@ class DiseaseAssessmentService {
           id: 'hydration_state',
           prompt: 'How well are you drinking fluids?',
           helper: 'Dehydration can become dangerous quickly.',
+          dependsOnQuestionId: 'warning_signs',
+          minScoreDependency: 30,
           options: [
             DiseaseAssessmentOption(
               label: 'Drinking normally',
@@ -143,26 +219,23 @@ class DiseaseAssessmentService {
     ),
     DiseaseAssessmentDefinition(
       id: 'malaria',
-      title: 'Malaria Check',
-      subtitle: 'Fever, chills, and exposure review',
-      summary:
-          'Screens for malaria warning signs using fever patterns, exposure, and danger symptoms.',
-      disclaimer:
-          'This does not confirm malaria. Testing is needed if malaria is suspected.',
-      guidance:
-          'Useful after travel or residence in malaria-risk regions with fever or chills.',
+      title: 'malaria_title',
+      subtitle: 'malaria_subtitle',
+      summary: 'malaria_desc',
+      disclaimer: 'malaria_disclaimer',
+      guidance: 'malaria_guidance',
       icon: Icons.public_rounded,
       accentColor: AppTheme.warning,
       gradient: AppTheme.cyanGradient,
       urgentFlags: [
-        'Confusion, fainting, seizures, or severe weakness',
-        'Difficulty breathing',
-        'Pregnancy, child illness, or rapid worsening',
+        'confusion_warning',
+        'severe_breathlessness',
+        'high_fever',
       ],
       defaultActions: [
-        'Seek diagnostic testing if fever follows travel or risk exposure.',
-        'Use mosquito protection and avoid delaying medical review.',
-        'Watch for confusion, breathing trouble, or inability to drink.',
+        'urgent_care_visit',
+        'monitor_symptoms',
+        'stay_uptodate_vax',
       ],
       questions: [
         DiseaseAssessmentQuestion(
@@ -277,26 +350,23 @@ class DiseaseAssessmentService {
     ),
     DiseaseAssessmentDefinition(
       id: 'typhoid',
-      title: 'Typhoid Check',
-      subtitle: 'Persistent fever and GI symptoms',
-      summary:
-          'Screens for typhoid-like illness patterns including sustained fever and food/water exposure.',
-      disclaimer:
-          'This does not confirm typhoid fever. Lab testing and clinician review are needed.',
-      guidance:
-          'Useful if you have ongoing fever with abdominal symptoms after food or water exposure.',
+      title: 'typhoid_title',
+      subtitle: 'typhoid_subtitle',
+      summary: 'typhoid_desc',
+      disclaimer: 'typhoid_disclaimer',
+      guidance: 'typhoid_guidance',
       icon: Icons.restaurant_menu_rounded,
       accentColor: AppTheme.secondary,
       gradient: AppTheme.primaryGradient,
       urgentFlags: [
-        'Confusion, severe weakness, or persistent vomiting',
-        'Blood in stool or severe dehydration',
-        'Fever lasting several days with worsening abdominal pain',
+        'confusion_warning',
+        'bleeding_signs',
+        'abdominal_pain_severe',
       ],
       defaultActions: [
-        'Seek medical review if fever persists for multiple days.',
-        'Use safe fluids and avoid dehydration.',
-        'Watch for confusion, severe abdominal pain, or blood in stool.',
+        'schedule_doctor',
+        'rest_hydration',
+        'monitor_symptoms',
       ],
       questions: [
         DiseaseAssessmentQuestion(
@@ -411,26 +481,23 @@ class DiseaseAssessmentService {
     ),
     DiseaseAssessmentDefinition(
       id: 'respiratory',
-      title: 'Respiratory Infection Check',
-      subtitle: 'Flu, COVID-like, or severe breathing review',
-      summary:
-          'Screens for respiratory illness severity using cough, fever, exposure, and breathing danger signs.',
-      disclaimer:
-          'This does not confirm COVID-19, flu, pneumonia, or another infection.',
-      guidance:
-          'Use when you have cough, fever, throat symptoms, or shortness of breath.',
+      title: 'respiratory_title',
+      subtitle: 'respiratory_subtitle',
+      summary: 'respiratory_desc',
+      disclaimer: 'respiratory_disclaimer',
+      guidance: 'respiratory_guidance',
       icon: Icons.air_rounded,
       accentColor: AppTheme.primary,
       gradient: AppTheme.deepBlueGradient,
       urgentFlags: [
-        'Shortness of breath at rest',
-        'Chest pain, blue lips, or confusion',
-        'Rapid worsening in a high-risk person',
+        'severe_breathlessness',
+        'confusion_warning',
+        'high_fever',
       ],
       defaultActions: [
-        'Rest, hydrate, and monitor breathing closely.',
-        'Reduce exposure to others if illness may be infectious.',
-        'Seek care early if symptoms worsen or you are high risk.',
+        'rest_hydration',
+        'isolate_others',
+        'monitor_symptoms',
       ],
       questions: [
         DiseaseAssessmentQuestion(
@@ -545,26 +612,23 @@ class DiseaseAssessmentService {
     ),
     DiseaseAssessmentDefinition(
       id: 'dehydration',
-      title: 'Dehydration Check',
-      subtitle: 'Fluid loss and danger sign review',
-      summary:
-          'Screens for dehydration risk from vomiting, diarrhea, heat illness, or poor intake.',
-      disclaimer:
-          'This is a screening tool, not a diagnosis. Severe dehydration needs urgent care.',
-      guidance:
-          'Helpful during diarrhea, vomiting, heat exposure, weakness, or reduced urine.',
+      title: 'dehydration_title',
+      subtitle: 'dehydration_subtitle',
+      summary: 'dehydration_desc',
+      disclaimer: 'dehydration_disclaimer',
+      guidance: 'dehydration_guidance',
       icon: Icons.water_drop_rounded,
       accentColor: AppTheme.success,
       gradient: AppTheme.successGradient,
       urgentFlags: [
-        'Unable to drink or keep fluids down',
-        'Very little urine, confusion, or fainting',
-        'Infant, elderly person, or rapid worsening',
+        'nausea_vomiting',
+        'low_urine_output',
+        'confusion_warning',
       ],
       defaultActions: [
-        'Increase oral fluids in small frequent amounts if tolerated.',
-        'Use oral rehydration solution when available.',
-        'Seek urgent care if urine drops, confusion develops, or vomiting persists.',
+        'rest_hydration',
+        'monitor_symptoms',
+        'urgent_care_visit',
       ],
       questions: [
         DiseaseAssessmentQuestion(
@@ -672,6 +736,807 @@ class DiseaseAssessmentService {
               label: 'Yes and getting worse',
               score: 60,
               description: 'Needs prompt attention.',
+            ),
+          ],
+        ),
+      ],
+    ),
+    DiseaseAssessmentDefinition(
+      id: 'cholera',
+      title: 'cholera_title',
+      subtitle: 'cholera_subtitle',
+      summary: 'cholera_desc',
+      disclaimer: 'cholera_disclaimer',
+      guidance: 'cholera_guidance',
+      icon: Icons.water_rounded,
+      accentColor: AppTheme.warning,
+      gradient: AppTheme.orangeGradient,
+      urgentFlags: [
+        'severe_symptoms',
+        'low_urine_output',
+        'nausea_vomiting',
+      ],
+      defaultActions: [
+        'rest_hydration',
+        'urgent_care_visit',
+        'isolate_others',
+      ],
+      questions: [
+        DiseaseAssessmentQuestion(
+          id: 'stool_pattern',
+          prompt: 'What is your stool pattern like?',
+          helper: 'Cholera often causes sudden, profuse, watery diarrhea.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'Normal stools',
+              score: 0,
+              description: 'No diarrhea.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Loose stools',
+              score: 20,
+              description: 'Some diarrhea but not severe.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Frequent watery stools',
+              score: 60,
+              description: 'Clear watery diarrhea several times.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Profuse rice-water stools',
+              score: 100,
+              description: 'Very severe, continuous watery diarrhea.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'vomiting',
+          prompt: 'Are you vomiting?',
+          helper: 'Vomiting with diarrhea increases dehydration risk quickly.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'No vomiting',
+              score: 0,
+              description: 'Able to keep things down.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Mild nausea or once',
+              score: 15,
+              description: 'Minimal vomiting.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Repeated vomiting',
+              score: 50,
+              description: 'Struggling to keep fluids down.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Constant vomiting',
+              score: 90,
+              description: 'Cannot retain any fluids.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'dehydration_level',
+          prompt: 'Do you show signs of dehydration?',
+          helper: 'Think about thirst, dry mouth, reduced urine, or dizziness.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'No signs',
+              score: 0,
+              description: 'Hydration seems adequate.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Mild thirst',
+              score: 20,
+              description: 'Some dehydration signs.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Dry mouth and less urine',
+              score: 55,
+              description: 'Moderate dehydration.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Severe dehydration signs',
+              score: 95,
+              description: 'Sunken eyes, very little urine, fainting.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'exposure_risk',
+          prompt: 'Any recent exposure risk?',
+          helper: 'Recent unsafe water, outbreak area, or contact with a case.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'No known risk',
+              score: 0,
+              description: 'No exposure concerns.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Possible unsafe water',
+              score: 20,
+              description: 'Some risk factor.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Known outbreak area',
+              score: 45,
+              description: 'Active cholera risk context.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Confirmed contact or outbreak',
+              score: 65,
+              description: 'High probability exposure.',
+            ),
+          ],
+        ),
+      ],
+    ),
+    DiseaseAssessmentDefinition(
+      id: 'hepatitis',
+      title: 'Hepatitis Check',
+      subtitle: 'Jaundice, fatigue, and liver-related symptoms',
+      summary:
+          'Screens for hepatitis warning signs including jaundice, dark urine, fatigue, and abdominal discomfort.',
+      disclaimer:
+          'This does not confirm hepatitis. Blood tests are required for diagnosis.',
+      guidance:
+          'Useful if you notice yellowing eyes or skin, dark urine, or prolonged fatigue.',
+      icon: Icons.biotech_rounded,
+      accentColor: AppTheme.warning,
+      gradient: AppTheme.orangeGradient,
+      urgentFlags: [
+        'Confusion or extreme sleepiness',
+        'Severe abdominal swelling or vomiting blood',
+        'Deep jaundice with rapidly worsening condition',
+      ],
+      defaultActions: [
+        'Avoid alcohol and hepatotoxic medications until reviewed.',
+        'Seek blood tests for liver function and viral markers.',
+        'Rest and maintain hydration while awaiting care.',
+      ],
+      questions: [
+        DiseaseAssessmentQuestion(
+          id: 'jaundice',
+          prompt: 'Have you noticed yellowing of eyes or skin?',
+          helper: 'Jaundice is a key sign of liver involvement.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'No yellowing',
+              score: 0,
+              description: 'No visible jaundice.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Slight yellowing',
+              score: 30,
+              description: 'Mild discoloration noticed.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Clear yellowing',
+              score: 65,
+              description: 'Obvious jaundice in eyes or skin.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Deep jaundice',
+              score: 95,
+              description: 'Severe yellowing with worsening.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'urine_stool',
+          prompt: 'Any dark urine or pale stools?',
+          helper: 'These changes suggest bile flow problems.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'Normal',
+              score: 0,
+              description: 'No color changes.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Slightly dark urine',
+              score: 20,
+              description: 'Minor change.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Dark urine or pale stools',
+              score: 55,
+              description: 'Clear abnormal color.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Very dark urine and pale stools',
+              score: 85,
+              description: 'Significant bile obstruction signs.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'fatigue_appetite',
+          prompt: 'How is your energy and appetite?',
+          helper: 'Hepatitis often causes prolonged fatigue and poor appetite.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'Normal',
+              score: 0,
+              description: 'Usual energy and appetite.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Slightly reduced',
+              score: 15,
+              description: 'A bit more tired than usual.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Markedly reduced',
+              score: 45,
+              description: 'Significant fatigue and poor appetite.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Severe fatigue or unable to eat',
+              score: 75,
+              description: 'Profound weakness and appetite loss.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'pain_nausea',
+          prompt: 'Any abdominal pain, nausea, or fever?',
+          helper: 'Right upper abdominal pain and nausea are common.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'None',
+              score: 0,
+              description: 'No abdominal symptoms.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Mild discomfort',
+              score: 15,
+              description: 'Some mild symptoms.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Moderate pain or nausea',
+              score: 40,
+              description: 'Noticeable abdominal symptoms.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Severe pain or persistent vomiting',
+              score: 80,
+              description: 'Serious abdominal warning signs.',
+            ),
+          ],
+        ),
+      ],
+    ),
+    DiseaseAssessmentDefinition(
+      id: 'tuberculosis',
+      title: 'Tuberculosis Check',
+      subtitle: 'Persistent cough and systemic symptoms',
+      summary:
+          'Screens for TB warning signs using cough duration, night sweats, weight loss, and hemoptysis.',
+      disclaimer:
+          'This does not confirm TB. Sputum testing and chest imaging are needed.',
+      guidance:
+          'Useful if you have a cough lasting weeks, night sweats, or unexplained weight loss.',
+      icon: Icons.coronavirus_rounded,
+      accentColor: AppTheme.purple,
+      gradient: AppTheme.purpleGradient,
+      urgentFlags: [
+        'Coughing up blood',
+        'Severe shortness of breath or chest pain',
+        'High fever with rapid deterioration',
+      ],
+      defaultActions: [
+        'Seek sputum testing and chest X-ray if cough persists.',
+        'Cover coughs and avoid close contact until evaluated.',
+        'Monitor temperature and weight changes.',
+      ],
+      questions: [
+        DiseaseAssessmentQuestion(
+          id: 'cough_duration',
+          prompt: 'How long have you had a cough?',
+          helper: 'TB typically causes a cough lasting more than 2-3 weeks.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'No cough',
+              score: 0,
+              description: 'No significant cough.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Less than 2 weeks',
+              score: 15,
+              description: 'Short-term cough.',
+            ),
+            DiseaseAssessmentOption(
+              label: '2 to 3 weeks',
+              score: 45,
+              description: 'Prolonged cough.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'More than 3 weeks',
+              score: 80,
+              description: 'Chronic cough concern.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'night_sweats',
+          prompt: 'Do you have night sweats or low-grade fever?',
+          helper: 'TB often causes drenching night sweats and evening fever.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'None',
+              score: 0,
+              description: 'No night sweats or fever.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Occasional',
+              score: 20,
+              description: 'Rare episodes.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Regular night sweats or fever',
+              score: 55,
+              description: 'Frequent systemic symptoms.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Severe drenching sweats or high fever',
+              score: 85,
+              description: 'Significant TB warning signs.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'weight_loss',
+          prompt: 'Any unexplained weight loss?',
+          helper: 'Unintentional weight loss is a classic TB sign.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'No weight loss',
+              score: 0,
+              description: 'Weight stable.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Slight loss',
+              score: 20,
+              description: 'A few kilograms lost.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Noticeable loss',
+              score: 50,
+              description: 'Clear unintentional weight loss.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Severe loss',
+              score: 75,
+              description: 'Dramatic weight decline.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'hemoptysis',
+          prompt: 'Any blood in sputum or severe chest symptoms?',
+          helper: 'Coughing blood needs urgent evaluation.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'None',
+              score: 0,
+              description: 'No blood in sputum.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Chest tightness only',
+              score: 20,
+              description: 'Mild chest symptoms.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Blood-streaked sputum',
+              score: 70,
+              description: 'Hemoptysis present.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Significant blood or severe pain',
+              score: 100,
+              description: 'Urgent warning sign.',
+            ),
+          ],
+        ),
+      ],
+    ),
+    DiseaseAssessmentDefinition(
+      id: 'measles',
+      title: 'Measles Check',
+      subtitle: 'Fever, rash, and respiratory symptoms',
+      summary:
+          'Screens for measles-like illness using fever, rash pattern, cough, and known exposure.',
+      disclaimer:
+          'This does not confirm measles. Laboratory confirmation may be needed.',
+      guidance:
+          'Useful if you have fever with rash, cough, red eyes, or known measles exposure.',
+      icon: Icons.sentiment_very_dissatisfied_rounded,
+      accentColor: AppTheme.danger,
+      gradient: AppTheme.dangerGradient,
+      urgentFlags: [
+        'Severe breathing difficulty',
+        'Confusion, seizures, or extreme lethargy',
+        'Dehydration or inability to drink',
+      ],
+      defaultActions: [
+        'Isolate and avoid contact with unvaccinated individuals.',
+        'Seek medical review and notify public health if suspected.',
+        'Use supportive care: fluids, rest, and fever control.',
+      ],
+      questions: [
+        DiseaseAssessmentQuestion(
+          id: 'fever_rash',
+          prompt: 'Do you have fever with a rash?',
+          helper: 'Measles typically starts with high fever followed by a body rash.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'No fever or rash',
+              score: 0,
+              description: 'Neither symptom present.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Fever only',
+              score: 20,
+              description: 'Fever without rash so far.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Fever with mild rash',
+              score: 60,
+              description: 'Both symptoms present.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'High fever with spreading rash',
+              score: 95,
+              description: 'Classic measles pattern.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'respiratory_eye',
+          prompt: 'Any cough, runny nose, or red eyes?',
+          helper: 'Measles causes cough, coryza, and conjunctivitis.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'None',
+              score: 0,
+              description: 'No respiratory or eye symptoms.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Mild cold-like symptoms',
+              score: 15,
+              description: 'Slight respiratory symptoms.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Clear cough and red eyes',
+              score: 50,
+              description: 'Prominent respiratory and eye signs.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Severe cough or eye discharge',
+              score: 80,
+              description: 'Strong measles-like presentation.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'measles_exposure',
+          prompt: 'Any known measles exposure or unvaccinated status?',
+          helper: 'Recent contact with a measles case raises concern.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'No exposure and vaccinated',
+              score: 0,
+              description: 'Low risk.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Unsure or unsure vaccine status',
+              score: 20,
+              description: 'Some uncertainty.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Known exposure or not vaccinated',
+              score: 50,
+              description: 'Higher risk context.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Direct contact with confirmed case',
+              score: 70,
+              description: 'High probability exposure.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: ' Koplik_or_worsening',
+          prompt: 'Any mouth spots or rapidly worsening condition?',
+          helper: 'Koplik spots inside the cheek are an early measles sign.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'No',
+              score: 0,
+              description: 'No mouth spots or rapid decline.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Mild mouth irritation',
+              score: 20,
+              description: 'Some oral symptoms.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Small white mouth spots',
+              score: 60,
+              description: 'Possible Koplik spots.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Rapidly worsening or very ill',
+              score: 90,
+              description: 'Severe deterioration.',
+            ),
+          ],
+        ),
+      ],
+    ),
+    DiseaseAssessmentDefinition(
+      id: 'covid19',
+      title: 'COVID-19 Check',
+      subtitle: 'Respiratory and systemic symptom review',
+      summary:
+          'Screens for COVID-19 likelihood using fever, cough, loss of taste or smell, and exposure history.',
+      disclaimer:
+          'This does not confirm COVID-19. Testing is needed for diagnosis.',
+      guidance:
+          'Useful when you have respiratory symptoms, fever, or known exposure to COVID-19.',
+      icon: Icons.masks_rounded,
+      accentColor: AppTheme.primary,
+      gradient: AppTheme.primaryGradient,
+      urgentFlags: [
+        'Difficulty breathing or chest pain',
+        'Confusion, inability to stay awake',
+        'Bluish lips or face, very low oxygen feeling',
+      ],
+      defaultActions: [
+        'Isolate and reduce contact with others.',
+        'Seek testing if symptoms or exposure are present.',
+        'Monitor breathing and seek care if it worsens.',
+      ],
+      questions: [
+        DiseaseAssessmentQuestion(
+          id: 'fever_systemic',
+          prompt: 'Do you have fever, chills, or body aches?',
+          helper: 'COVID-19 often presents with fever and muscle aches.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'None',
+              score: 0,
+              description: 'No systemic symptoms.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Mild',
+              score: 20,
+              description: 'Slight fever or mild aches.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Moderate fever and aches',
+              score: 50,
+              description: 'Clear systemic symptoms.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'High fever or severe aches',
+              score: 80,
+              description: 'Strong systemic illness.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'respiratory_symptoms',
+          prompt: 'How strong are your cough, sore throat, or breathing symptoms?',
+          helper: 'Respiratory symptoms are central to COVID-19.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'None',
+              score: 0,
+              description: 'No respiratory symptoms.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Mild',
+              score: 15,
+              description: 'Slight cough or sore throat.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Moderate cough or breathlessness',
+              score: 50,
+              description: 'Noticeable respiratory symptoms.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Severe breathing difficulty',
+              score: 100,
+              description: 'Emergency respiratory warning.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'taste_smell',
+          prompt: 'Any loss of taste or smell?',
+          helper: 'Loss of taste or smell is a characteristic COVID-19 sign.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'No loss',
+              score: 0,
+              description: 'Taste and smell normal.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Slightly reduced',
+              score: 25,
+              description: 'Minor change.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Noticeably reduced',
+              score: 60,
+              description: 'Clear loss of taste or smell.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Complete loss',
+              score: 85,
+              description: 'Total anosmia or ageusia.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'covid_exposure',
+          prompt: 'Any recent COVID-19 exposure or positive contact?',
+          helper: 'Recent contact with a confirmed case raises likelihood.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'No known exposure',
+              score: 0,
+              description: 'No contact history.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Possible exposure',
+              score: 15,
+              description: 'Uncertain contact.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Known exposure',
+              score: 40,
+              description: 'Close contact with a case.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Confirmed contact or outbreak',
+              score: 60,
+              description: 'High-risk exposure context.',
+            ),
+          ],
+        ),
+      ],
+    ),
+    DiseaseAssessmentDefinition(
+      id: 'meningitis',
+      title: 'Meningitis Check',
+      subtitle: 'Severe headache, neck stiffness, and fever',
+      summary:
+          'Screens for meningitis warning signs using neck stiffness, severe headache, fever, and altered mental status.',
+      disclaimer:
+          'This does not confirm meningitis. Lumbar puncture and clinician review are needed.',
+      guidance:
+          'Useful if you have severe headache with fever, neck stiffness, or confusion.',
+      icon: Icons.psychology_rounded,
+      accentColor: AppTheme.primary,
+      gradient: AppTheme.deepBlueGradient,
+      urgentFlags: [
+        'Severe headache with stiff neck and fever',
+        'Confusion, altered behavior, or seizures',
+        'Rash that does not fade when pressed (petechiae)',
+      ],
+      defaultActions: [
+        'Seek emergency medical care immediately if suspected.',
+        'Do not delay evaluation — meningitis can progress rapidly.',
+        'Note when symptoms began and any recent infections.',
+      ],
+      questions: [
+        DiseaseAssessmentQuestion(
+          id: 'neck_stiffness',
+          prompt: 'Can you bend your neck forward comfortably?',
+          helper: 'Neck stiffness is a classic sign of meningitis.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'Yes, fully flexible',
+              score: 0,
+              description: 'No neck stiffness.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Slightly stiff',
+              score: 30,
+              description: 'Minor discomfort bending neck.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Clearly stiff and painful',
+              score: 75,
+              description: 'Significant neck rigidity.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Cannot bend neck',
+              score: 100,
+              description: 'Severe meningeal irritation.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'headache_severity',
+          prompt: 'How severe is your headache?',
+          helper: 'Meningitis headaches are typically severe and sudden.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'No headache',
+              score: 0,
+              description: 'No significant headache.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Mild',
+              score: 15,
+              description: 'Manageable headache.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Severe',
+              score: 60,
+              description: 'Intense, persistent headache.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Worst headache ever / thunderclap',
+              score: 100,
+              description: 'Sudden, excruciating headache.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'fever_rash',
+          prompt: 'Do you have fever, rash, or light sensitivity?',
+          helper: 'Fever with rash or photophobia supports meningitis concern.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'None',
+              score: 0,
+              description: 'No fever, rash, or photophobia.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Fever only',
+              score: 25,
+              description: 'Fever without rash or light sensitivity.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Fever with rash or photophobia',
+              score: 70,
+              description: 'Concerning combination.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Non-blanching rash with fever',
+              score: 100,
+              description: 'Possible meningococcal rash.',
+            ),
+          ],
+        ),
+        DiseaseAssessmentQuestion(
+          id: 'mental_status',
+          prompt: 'Any confusion, drowsiness, or behavior changes?',
+          helper: 'Altered mental status is a red flag in meningitis.',
+          options: [
+            DiseaseAssessmentOption(
+              label: 'Fully alert',
+              score: 0,
+              description: 'Normal mental status.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Slightly drowsy',
+              score: 25,
+              description: 'Mild sleepiness.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Confused or very drowsy',
+              score: 75,
+              description: 'Significant altered mental status.',
+            ),
+            DiseaseAssessmentOption(
+              label: 'Unresponsive or seizures',
+              score: 100,
+              description: 'Critical neurological emergency.',
             ),
           ],
         ),

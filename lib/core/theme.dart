@@ -1,122 +1,147 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'theme_notifier.dart';
 
 class AppTheme {
   AppTheme._();
 
-  // ─── Brand Palette ────────────────────────────────────────────────────────
-  static const Color primary        = Color(0xFF0D9488); // teal
-  static const Color primaryDark    = Color(0xFF1D4ED8);
-  static const Color primaryLight   = Color(0xFF60A5FA);
-  static const Color primarySurface = Color(0xFFEFF6FF); // very pale blue
+  static bool get isDark => ThemeNotifier.instance.isDark;
 
-  static const Color secondary      = Color(0xFF0891B2); // cyan
-  static const Color secondaryLight = Color(0xFF67E8F9);
+  // ─── Premium Brand Palette (static const — safe in const widgets) ─────────
+  static const Color primary        = Color(0xFF00D2FF); // Neon cyan
+  static const Color primaryLight   = Color(0xFF3A86FF); // Bright Blue
+  static const Color secondary      = Color(0xFFFF007A); // Neon Pink
+  static const Color secondaryLight = Color(0xFFFF52A2);
+  static const Color success        = Color(0xFF00E676); // Neon Green
+  static const Color successLight   = Color(0xFFB9F6CA);
+  static const Color warning        = Color(0xFFFFC400); // Neon Yellow
+  static const Color warningLight   = Color(0xFFFFE57F);
+  static const Color danger         = Color(0xFFFF1744); // Neon Red
+  static const Color dangerLight    = Color(0xFFFF8A80);
+  static const Color purple         = Color(0xFF8A2BE2); // Deep Purple
+  static const Color purpleLight    = Color(0xFFD1C4E9);
+  static const Color borderFocus    = Color(0xFF00D2FF);
 
-  static const Color success        = Color(0xFF059669);
-  static const Color successLight   = Color(0xFFD1FAE5);
-  static const Color warning        = Color(0xFFD97706);
-  static const Color warningLight   = Color(0xFFFEF3C7);
-  static const Color danger         = Color(0xFFDC2626);
-  static const Color dangerLight    = Color(0xFFFEE2E2);
-  static const Color purple         = Color(0xFF7C3AED);
-  static const Color purpleLight    = Color(0xFFEDE9FE);
+  // ─── Theme-sensitive colors (Dynamic getters using context for reactivity) ──
+  static Color background(BuildContext context) => Theme.of(context).scaffoldBackgroundColor;
+  static Color surface(BuildContext context) => Theme.of(context).colorScheme.surface;
+  static Color surfaceVariant(BuildContext context) => Theme.of(context).colorScheme.surfaceContainerHighest;
+  static Color border(BuildContext context) => isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1);
+  static Color textPrimary(BuildContext context) => Theme.of(context).colorScheme.onSurface;
+  static Color textSecondary(BuildContext context) => isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+  static Color textTertiary(BuildContext context) => isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
+  static Color textInverse(BuildContext context) => Theme.of(context).colorScheme.surface;
 
-  // ─── Neutrals ─────────────────────────────────────────────────────────────
-  static const Color background     = Color(0xFFF1F5F9);
-  static const Color surface        = Color(0xFFFFFFFF);
-  static const Color surfaceVariant = Color(0xFFF8FAFC);
-  static const Color border         = Color(0xFFE2E8F0);
-  static const Color borderFocus    = Color(0xFF2563EB);
+  // Keep old getters for legacy compatibility but mark as deprecated or redirected
+  static Color get primarySurface => isDark ? const Color(0xFF1E293B) : const Color(0xFFE0F2FE);
+  static Color get backgroundStatic => isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9);
+  static Color get surfaceStatic => isDark ? const Color(0xFF1E293B) : Colors.white;
+  static Color get surfaceVariantStatic => isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+  static Color get borderStatic => isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1);
+  static Color get textPrimaryStatic => isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+  static Color get textSecondaryStatic => isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
-  static const Color textPrimary    = Color(0xFF0F172A);
-  static const Color textSecondary  = Color(0xFF64748B);
-  static const Color textTertiary   = Color(0xFF94A3B8);
-  static const Color textInverse    = Color(0xFFFFFFFF);
-
-  // ─── Risk levels ──────────────────────────────────────────────────────────
+  // ─── Risk levels ─────────────────────────────────────────────────────────
   static const Color riskLow      = success;
   static const Color riskMedium   = warning;
-  static const Color riskHigh     = Color(0xFFEA580C);
+  static const Color riskHigh     = Color(0xFFFF6D00);
   static const Color riskCritical = danger;
 
-  // ─── Gradients ────────────────────────────────────────────────────────────
+  // ─── Gradients (Premium) ──────────────────────────────────────────────────
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF2563EB), Color(0xFF60A5FA)],
+    colors: [Color(0xFF3A86FF), Color(0xFF00D2FF)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient deepBlueGradient = LinearGradient(
-    colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+    colors: [Color(0xFF090E17), Color(0xFF131B2B)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
+  static LinearGradient getHealthGradient(BuildContext context) {
+    return isDark 
+      ? deepBlueGradient 
+      : LinearGradient(
+          colors: [primary.withOpacity(0.05), primary.withOpacity(0.15)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+  }
+
   static const LinearGradient successGradient = LinearGradient(
-    colors: [Color(0xFF059669), Color(0xFF34D399)],
+    colors: [Color(0xFF00BFA5), Color(0xFF00E676)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient dangerGradient = LinearGradient(
-    colors: [Color(0xFFDC2626), Color(0xFFFCA5A5)],
+    colors: [Color(0xFFFF1744), Color(0xFFFF5252)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient purpleGradient = LinearGradient(
-    colors: [Color(0xFF7C3AED), Color(0xFFA78BFA)],
+    colors: [Color(0xFF8A2BE2), Color(0xFFB388FF)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient cyanGradient = LinearGradient(
-    colors: [Color(0xFF0891B2), Color(0xFF67E8F9)],
+    colors: [Color(0xFF00B4DB), Color(0xFF0083B0)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
-  // ─── Shadows ────────────────────────────────���─────────────────────────────
+  static const LinearGradient orangeGradient = LinearGradient(
+    colors: [Color(0xFFFF8008), Color(0xFFFFC837)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient warningGradient = LinearGradient(
+    colors: [Color(0xFFF59E0B), Color(0xFFFFD600)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient premiumDarkGradient = LinearGradient(
+    colors: [Color(0xFF141E30), Color(0xFF243B55)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  // ─── Shadows ─────────────────────────────────────────────────────────────
   static List<BoxShadow> get shadowSm => [
     BoxShadow(
-      color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-      blurRadius: 6,
-      offset: const Offset(0, 2),
+      color: Colors.black.withOpacity(0.08),
+      blurRadius: 8,
+      offset: const Offset(0, 4),
     ),
   ];
 
   static List<BoxShadow> get shadowMd => [
     BoxShadow(
-      color: const Color(0xFF0F172A).withValues(alpha: 0.06),
-      blurRadius: 12,
-      offset: const Offset(0, 4),
-    ),
-    BoxShadow(
-      color: const Color(0xFF0F172A).withValues(alpha: 0.03),
-      blurRadius: 4,
-      offset: const Offset(0, 1),
+      color: Colors.black.withOpacity(0.3),
+      blurRadius: 16,
+      offset: const Offset(0, 8),
     ),
   ];
 
   static List<BoxShadow> get shadowLg => [
     BoxShadow(
-      color: const Color(0xFF0F172A).withValues(alpha: 0.10),
+      color: Colors.black.withOpacity(0.4),
       blurRadius: 24,
-      offset: const Offset(0, 8),
-    ),
-    BoxShadow(
-      color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-      blurRadius: 6,
-      offset: const Offset(0, 2),
+      offset: const Offset(0, 12),
     ),
   ];
 
   static List<BoxShadow> get shadowPrimary => [
     BoxShadow(
-      color: primary.withValues(alpha: 0.30),
-      blurRadius: 20,
+      color: primary.withOpacity(0.4),
+      blurRadius: 24,
       offset: const Offset(0, 8),
     ),
   ];
@@ -136,74 +161,90 @@ class AppTheme {
   static const double spacingXl = 32;
 
   // ─── Theme ───────────────────────────────────────────────────────────────
-  static ThemeData lightTheme() {
+  static ThemeData lightTheme() => _buildTheme(Brightness.light);
+  static ThemeData darkTheme() => _buildTheme(Brightness.dark);
+
+  static ThemeData _buildTheme(Brightness brightness) {
+    final isDarkTheme = brightness == Brightness.dark;
+    final bg = isDarkTheme ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9);
+    final surf = isDarkTheme ? const Color(0xFF1E293B) : Colors.white;
+    final txtPrimary = isDarkTheme ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+    final brdr = isDarkTheme ? const Color(0xFF475569) : const Color(0xFFCBD5E1);
+
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: primary,
-      brightness: Brightness.light,
+      seedColor: primaryLight,
+      brightness: brightness,
       primary: primary,
-      onPrimary: Colors.white,
+      onPrimary: Colors.black,
       secondary: secondary,
       onSecondary: Colors.white,
       error: danger,
-      surface: surface,
-      onSurface: textPrimary,
+      surface: surf,
+      onSurface: txtPrimary,
+      surfaceContainerHighest: isDarkTheme ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: background,
+      scaffoldBackgroundColor: bg,
 
       // ── App Bar ─────────────────────────────────────────────────────────
       appBarTheme: AppBarTheme(
-        backgroundColor: Colors.white,
-        foregroundColor: textPrimary,
+        backgroundColor: surf,
+        foregroundColor: txtPrimary,
         elevation: 0,
-        scrolledUnderElevation: 1,
-        shadowColor: border,
+        scrolledUnderElevation: 2,
+        shadowColor: Colors.black.withOpacity(0.1),
         centerTitle: false,
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
-        titleTextStyle: GoogleFonts.inter(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: textPrimary,
-          letterSpacing: -0.3,
+        systemOverlayStyle: isDarkTheme ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+        titleTextStyle: GoogleFonts.outfit(
+          fontSize: 20,
+          fontWeight: FontWeight.w800,
+          color: txtPrimary,
+          letterSpacing: -0.5,
         ),
-        iconTheme: const IconThemeData(color: textPrimary, size: 22),
+        iconTheme: IconThemeData(color: txtPrimary, size: 24),
       ),
 
       // ── Text ────────────────────────────────────────────────────────────
-      textTheme: _buildTextTheme(),
+      textTheme: _buildDarkTextTheme(),
 
       // ── Buttons ─────────────────────────────────────────────────────────
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
-          foregroundColor: Colors.white,
+          foregroundColor: Colors.black, // Dark text on bright neon
           elevation: 0,
-          shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
+          shadowColor: primary.withOpacity(0.4),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusMd),
+            borderRadius: BorderRadius.circular(radiusLg),
           ),
-          textStyle: GoogleFonts.inter(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.1,
+          textStyle: GoogleFonts.outfit(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
           ),
+        ).copyWith(
+          elevation: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.pressed)) return 2;
+            if (states.contains(WidgetState.hovered)) return 8;
+            return 0;
+          }),
         ),
       ),
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: primary,
-          side: const BorderSide(color: border, width: 1.5),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
+          foregroundColor: txtPrimary,
+          side: BorderSide(color: brdr),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusMd),
+            borderRadius: BorderRadius.circular(radiusLg),
           ),
-          textStyle: GoogleFonts.inter(
-            fontSize: 15,
+          textStyle: GoogleFonts.outfit(
+            fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -212,8 +253,9 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: primary,
-          textStyle: GoogleFonts.inter(
-            fontSize: 14,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          textStyle: GoogleFonts.outfit(
+            fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -221,11 +263,11 @@ class AppTheme {
 
       // ── Cards ───────────────────────────────────────────────────────────
       cardTheme: CardThemeData(
-        color: surface,
+        color: surf,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusLg),
-          side: const BorderSide(color: border, width: 1),
+          borderRadius: BorderRadius.circular(radius2xl),
+          side: BorderSide(color: brdr.withOpacity(0.5)),
         ),
         margin: EdgeInsets.zero,
       ),
@@ -233,133 +275,105 @@ class AppTheme {
       // ── Inputs ──────────────────────────────────────────────────────────
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surface,
-        contentPadding:
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        fillColor: isDarkTheme ? const Color(0xFF1E293B) : Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: const BorderSide(color: border),
+          borderRadius: BorderRadius.circular(radiusXl),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: const BorderSide(color: border),
+          borderRadius: BorderRadius.circular(radiusXl),
+          borderSide: BorderSide(color: brdr.withOpacity(0.3)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
+          borderRadius: BorderRadius.circular(radiusXl),
           borderSide: const BorderSide(color: primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: const BorderSide(color: danger),
+          borderRadius: BorderRadius.circular(radiusXl),
+          borderSide: BorderSide(color: danger.withOpacity(0.5), width: 2),
         ),
-        labelStyle: GoogleFonts.inter(color: textSecondary, fontSize: 14),
-        hintStyle: GoogleFonts.inter(color: textTertiary, fontSize: 14),
-        errorStyle: GoogleFonts.inter(color: danger, fontSize: 12),
-        prefixIconColor: textSecondary,
-        suffixIconColor: textSecondary,
-      ),
-
-      // ── Chips ───────────────────────────────────────────────────────────
-      chipTheme: ChipThemeData(
-        backgroundColor: surfaceVariant,
-        selectedColor: primarySurface,
-        labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: border),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        labelStyle: GoogleFonts.outfit(color: isDarkTheme ? const Color(0xFF94A3B8) : const Color(0xFF64748B), fontSize: 15, fontWeight: FontWeight.w500),
+        hintStyle: GoogleFonts.outfit(color: isDarkTheme ? const Color(0xFF475569) : const Color(0xFF94A3B8), fontSize: 15),
+        errorStyle: GoogleFonts.outfit(color: danger, fontSize: 13, fontWeight: FontWeight.w600),
       ),
 
       // ── Bottom Nav ──────────────────────────────────────────────────────
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: Colors.white,
+        backgroundColor: surf,
         selectedItemColor: primary,
-        unselectedItemColor: textTertiary,
-        selectedLabelStyle: GoogleFonts.inter(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: GoogleFonts.inter(fontSize: 11),
-        elevation: 0,
+        unselectedItemColor: isDarkTheme ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+        selectedLabelStyle: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w500),
         type: BottomNavigationBarType.fixed,
+        elevation: 0,
       ),
 
-      // ── Navigation Bar (M3) ─────────────────────────────────────────────
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: Colors.white,
-        indicatorColor: primarySurface,
-        iconTheme: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return const IconThemeData(color: primary, size: 22);
-          }
-          return const IconThemeData(color: textTertiary, size: 22);
-        }),
-        labelTextStyle: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: primary,
-            );
-          }
-          return GoogleFonts.inter(fontSize: 11, color: textTertiary);
-        }),
-        elevation: 0,
-        shadowColor: Colors.transparent,
+      // ── Bottom Sheet ────────────────────────────────────────────────────
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: surf,
+        modalBackgroundColor: surf,
+        elevation: 24,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(radius2xl)),
+        ),
       ),
 
       // ── FAB ─────────────────────────────────────────────────────────────
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: primary,
-        foregroundColor: Colors.white,
+        foregroundColor: Colors.black,
         elevation: 8,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(radiusXl),
         ),
       ),
 
       // ── Divider ─────────────────────────────────────────────────────────
-      dividerTheme: const DividerThemeData(color: border, thickness: 1, space: 1),
+      dividerTheme: DividerThemeData(color: brdr.withOpacity(0.5), thickness: 1, space: 1),
 
       // ── Dialog ──────────────────────────────────────────────────────────
       dialogTheme: DialogThemeData(
-        backgroundColor: surface,
-        elevation: 0,
+        backgroundColor: surf,
+        elevation: 24,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radius2xl),
+          side: BorderSide(color: brdr.withOpacity(0.3)),
         ),
-        titleTextStyle: GoogleFonts.inter(
-          fontSize: 18,
+        titleTextStyle: GoogleFonts.outfit(
+          fontSize: 22,
           fontWeight: FontWeight.w700,
-          color: textPrimary,
+          color: txtPrimary,
+          letterSpacing: -0.5,
         ),
-        contentTextStyle: GoogleFonts.inter(
-          fontSize: 14,
-          color: textSecondary,
+        contentTextStyle: GoogleFonts.outfit(
+          fontSize: 15,
+          color: isDarkTheme ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
           height: 1.6,
         ),
       ),
 
       // ── Snackbar ───────────────────────────────────────────────────────
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: textPrimary,
-        contentTextStyle:
-        GoogleFonts.inter(color: Colors.white, fontSize: 14, height: 1.4),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusMd)),
+        backgroundColor: isDarkTheme ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+        contentTextStyle: GoogleFonts.outfit(color: txtPrimary, fontSize: 15, height: 1.4),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusLg),
+          side: BorderSide(color: brdr.withOpacity(0.5)),
+        ),
         behavior: SnackBarBehavior.floating,
-        elevation: 0,
+        elevation: 8,
       ),
 
       // ── Switch ─────────────────────────────────────────────────────────
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return Colors.white;
-          return textTertiary;
+          if (states.contains(WidgetState.selected)) return Colors.black;
+          return isDarkTheme ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return primary;
-          return border;
+          return isDarkTheme ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
         }),
       ),
 
@@ -369,309 +383,50 @@ class AppTheme {
           if (states.contains(WidgetState.selected)) return primary;
           return Colors.transparent;
         }),
-        checkColor: WidgetStateProperty.all(Colors.white),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        side: const BorderSide(color: border, width: 1.5),
+        checkColor: WidgetStateProperty.all(Colors.black),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        side: BorderSide(color: brdr.withOpacity(0.8), width: 2),
       ),
 
       // ── Progress ──────────────────────────────────────────────────────────
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
+      progressIndicatorTheme: ProgressIndicatorThemeData(
         color: primary,
-        linearTrackColor: border,
+        linearTrackColor: isDarkTheme ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
       ),
 
       // ── List Tile ─────────────────────────────────────────────────────
       listTileTheme: ListTileThemeData(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        titleTextStyle: GoogleFonts.inter(
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
-          color: textPrimary,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        tileColor: Colors.transparent,
+        titleTextStyle: GoogleFonts.outfit(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: txtPrimary,
         ),
-        subtitleTextStyle: GoogleFonts.inter(fontSize: 13, color: textSecondary),
-        iconColor: textSecondary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusMd)),
-      ),
-    );
-  }
-
-  static TextTheme _buildTextTheme() {
-    return TextTheme(
-      displayLarge: GoogleFonts.inter(
-        fontSize: 36, fontWeight: FontWeight.w800,
-        color: textPrimary, letterSpacing: -1.0, height: 1.1,
-      ),
-      displayMedium: GoogleFonts.inter(
-        fontSize: 30, fontWeight: FontWeight.w700,
-        color: textPrimary, letterSpacing: -0.8, height: 1.2,
-      ),
-      displaySmall: GoogleFonts.inter(
-        fontSize: 24, fontWeight: FontWeight.w700,
-        color: textPrimary, letterSpacing: -0.5, height: 1.2,
-      ),
-      headlineLarge: GoogleFonts.inter(
-        fontSize: 22, fontWeight: FontWeight.w700,
-        color: textPrimary, letterSpacing: -0.4,
-      ),
-      headlineMedium: GoogleFonts.inter(
-        fontSize: 20, fontWeight: FontWeight.w600,
-        color: textPrimary, letterSpacing: -0.3,
-      ),
-      headlineSmall: GoogleFonts.inter(
-        fontSize: 18, fontWeight: FontWeight.w600,
-        color: textPrimary, letterSpacing: -0.2,
-      ),
-      titleLarge: GoogleFonts.inter(
-        fontSize: 16, fontWeight: FontWeight.w600,
-        color: textPrimary, letterSpacing: -0.1,
-      ),
-      titleMedium: GoogleFonts.inter(
-        fontSize: 15, fontWeight: FontWeight.w500, color: textPrimary,
-      ),
-      titleSmall: GoogleFonts.inter(
-        fontSize: 14, fontWeight: FontWeight.w500, color: textPrimary,
-      ),
-      bodyLarge: GoogleFonts.inter(
-        fontSize: 16, fontWeight: FontWeight.w400,
-        color: textPrimary, height: 1.6,
-      ),
-      bodyMedium: GoogleFonts.inter(
-        fontSize: 14, fontWeight: FontWeight.w400,
-        color: textSecondary, height: 1.6,
-      ),
-      bodySmall: GoogleFonts.inter(
-        fontSize: 13, fontWeight: FontWeight.w400,
-        color: textSecondary, height: 1.5,
-      ),
-      labelLarge: GoogleFonts.inter(
-        fontSize: 14, fontWeight: FontWeight.w600,
-        color: textPrimary, letterSpacing: 0.1,
-      ),
-      labelMedium: GoogleFonts.inter(
-        fontSize: 12, fontWeight: FontWeight.w600,
-        color: textSecondary, letterSpacing: 0.2,
-      ),
-      labelSmall: GoogleFonts.inter(
-        fontSize: 11, fontWeight: FontWeight.w500,
-        color: textTertiary, letterSpacing: 0.3,
-      ),
-    );
-  }
-
-  // ─── Dark palette ─────────────────────────────────────────────────────────
-  static const Color darkBackground     = Color(0xFF0F172A);
-  static const Color darkSurface        = Color(0xFF1E293B);
-  static const Color darkSurfaceVariant = Color(0xFF263348);
-  static const Color darkBorder         = Color(0xFF334155);
-  static const Color darkTextPrimary    = Color(0xFFF1F5F9);
-  static const Color darkTextSecondary  = Color(0xFF94A3B8);
-  static const Color darkTextTertiary   = Color(0xFF64748B);
-  static const Color darkPrimarySurface = Color(0xFF1E3A5F);
-
-  // ─── Dark Theme ───────────────────────────────────────────────────────────
-  static ThemeData darkTheme() {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: primary,
-      brightness: Brightness.dark,
-      primary: primary,
-      onPrimary: Colors.white,
-      secondary: secondary,
-      onSecondary: Colors.white,
-      error: danger,
-      surface: darkSurface,
-      onSurface: darkTextPrimary,
-    );
-
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: colorScheme,
-      scaffoldBackgroundColor: darkBackground,
-
-      appBarTheme: AppBarTheme(
-        backgroundColor: darkSurface,
-        foregroundColor: darkTextPrimary,
-        elevation: 0,
-        scrolledUnderElevation: 1,
-        shadowColor: darkBorder,
-        centerTitle: false,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
-        titleTextStyle: GoogleFonts.inter(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: darkTextPrimary,
-          letterSpacing: -0.3,
-        ),
-        iconTheme: const IconThemeData(color: darkTextPrimary, size: 22),
-      ),
-
-      textTheme: _buildDarkTextTheme(),
-
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusMd)),
-          textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-      ),
-
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: primaryLight,
-          side: const BorderSide(color: darkBorder, width: 1.5),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusMd)),
-          textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-      ),
-
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: primaryLight,
-          textStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
-      ),
-
-      cardTheme: CardThemeData(
-        color: darkSurface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusLg),
-          side: const BorderSide(color: darkBorder, width: 1),
-        ),
-        margin: EdgeInsets.zero,
-      ),
-
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: darkSurfaceVariant,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(radiusMd), borderSide: const BorderSide(color: darkBorder)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(radiusMd), borderSide: const BorderSide(color: darkBorder)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(radiusMd), borderSide: const BorderSide(color: primary, width: 2)),
-        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(radiusMd), borderSide: const BorderSide(color: danger)),
-        labelStyle: GoogleFonts.inter(color: darkTextSecondary, fontSize: 14),
-        hintStyle: GoogleFonts.inter(color: darkTextTertiary, fontSize: 14),
-        errorStyle: GoogleFonts.inter(color: danger, fontSize: 12),
-        prefixIconColor: darkTextSecondary,
-        suffixIconColor: darkTextSecondary,
-      ),
-
-      chipTheme: ChipThemeData(
-        backgroundColor: darkSurfaceVariant,
-        selectedColor: darkPrimarySurface,
-        labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: darkTextPrimary),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: darkBorder),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      ),
-
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: darkSurface,
-        selectedItemColor: primaryLight,
-        unselectedItemColor: darkTextTertiary,
-        selectedLabelStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: GoogleFonts.inter(fontSize: 11),
-        elevation: 0,
-        type: BottomNavigationBarType.fixed,
-      ),
-
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: darkSurface,
-        indicatorColor: darkPrimarySurface,
-        iconTheme: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return const IconThemeData(color: primaryLight, size: 22);
-          return const IconThemeData(color: darkTextTertiary, size: 22);
-        }),
-        labelTextStyle: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: primaryLight);
-          return GoogleFonts.inter(fontSize: 11, color: darkTextTertiary);
-        }),
-        elevation: 0,
-        shadowColor: Colors.transparent,
-      ),
-
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: primary,
-        foregroundColor: Colors.white,
-        elevation: 8,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-
-      dividerTheme: const DividerThemeData(color: darkBorder, thickness: 1, space: 1),
-
-      dialogTheme: DialogThemeData(
-        backgroundColor: darkSurface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius2xl)),
-        titleTextStyle: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: darkTextPrimary),
-        contentTextStyle: GoogleFonts.inter(fontSize: 14, color: darkTextSecondary, height: 1.6),
-      ),
-
-      snackBarTheme: SnackBarThemeData(
-        backgroundColor: darkSurfaceVariant,
-        contentTextStyle: GoogleFonts.inter(color: darkTextPrimary, fontSize: 14, height: 1.4),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusMd)),
-        behavior: SnackBarBehavior.floating,
-        elevation: 0,
-      ),
-
-      switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return Colors.white;
-          return darkTextTertiary;
-        }),
-        trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return primary;
-          return darkBorder;
-        }),
-      ),
-
-      checkboxTheme: CheckboxThemeData(
-        fillColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return primary;
-          return Colors.transparent;
-        }),
-        checkColor: WidgetStateProperty.all(Colors.white),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        side: const BorderSide(color: darkBorder, width: 1.5),
-      ),
-
-      progressIndicatorTheme: const ProgressIndicatorThemeData(color: primaryLight, linearTrackColor: darkBorder),
-
-      listTileTheme: ListTileThemeData(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        tileColor: darkSurface,
-        titleTextStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w500, color: darkTextPrimary),
-        subtitleTextStyle: GoogleFonts.inter(fontSize: 13, color: darkTextSecondary),
-        iconColor: darkTextSecondary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusMd)),
+        subtitleTextStyle: GoogleFonts.outfit(fontSize: 14, color: isDarkTheme ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+        iconColor: isDarkTheme ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusLg)),
       ),
     );
   }
 
   static TextTheme _buildDarkTextTheme() {
     return TextTheme(
-      displayLarge: GoogleFonts.inter(fontSize: 36, fontWeight: FontWeight.w800, color: darkTextPrimary, letterSpacing: -1.0, height: 1.1),
-      displayMedium: GoogleFonts.inter(fontSize: 30, fontWeight: FontWeight.w700, color: darkTextPrimary, letterSpacing: -0.8, height: 1.2),
-      displaySmall: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w700, color: darkTextPrimary, letterSpacing: -0.5, height: 1.2),
-      headlineLarge: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: darkTextPrimary, letterSpacing: -0.4),
-      headlineMedium: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600, color: darkTextPrimary, letterSpacing: -0.3),
-      headlineSmall: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600, color: darkTextPrimary, letterSpacing: -0.2),
-      titleLarge: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: darkTextPrimary, letterSpacing: -0.1),
-      titleMedium: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w500, color: darkTextPrimary),
-      titleSmall: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: darkTextPrimary),
-      bodyLarge: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w400, color: darkTextPrimary, height: 1.6),
-      bodyMedium: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w400, color: darkTextSecondary, height: 1.6),
-      bodySmall: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w400, color: darkTextSecondary, height: 1.5),
-      labelLarge: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: darkTextPrimary, letterSpacing: 0.1),
-      labelMedium: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: darkTextSecondary, letterSpacing: 0.2),
-      labelSmall: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500, color: darkTextTertiary, letterSpacing: 0.3),
+      displayLarge: GoogleFonts.outfit(fontSize: 40, fontWeight: FontWeight.w800, color: textPrimaryStatic, letterSpacing: -1.0, height: 1.1),
+      displayMedium: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.w800, color: textPrimaryStatic, letterSpacing: -0.8, height: 1.2),
+      displaySmall: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.w700, color: textPrimaryStatic, letterSpacing: -0.5, height: 1.2),
+      headlineLarge: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w700, color: textPrimaryStatic, letterSpacing: -0.4),
+      headlineMedium: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.w700, color: textPrimaryStatic, letterSpacing: -0.3),
+      headlineSmall: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w600, color: textPrimaryStatic, letterSpacing: -0.2),
+      titleLarge: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: textPrimaryStatic, letterSpacing: -0.1),
+      titleMedium: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w500, color: textPrimaryStatic),
+      titleSmall: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w500, color: textPrimaryStatic),
+      bodyLarge: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w400, color: textPrimaryStatic, height: 1.6),
+      bodyMedium: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w400, color: textSecondaryStatic, height: 1.6),
+      bodySmall: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w400, color: textSecondaryStatic, height: 1.5),
+      labelLarge: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600, color: textPrimaryStatic, letterSpacing: 0.5),
+      labelMedium: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: textSecondaryStatic, letterSpacing: 0.5),
+      labelSmall: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600, color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8), letterSpacing: 0.5),
     );
   }
 
@@ -680,13 +435,17 @@ class AppTheme {
     switch (status.toLowerCase()) {
       case 'completed':
       case 'done':
-      case 'success': return success;
+      case 'success':
+      case 'low': return success;
       case 'pending':
-      case 'warning': return warning;
+      case 'warning':
+      case 'moderate': return warning;
       case 'overdue':
       case 'critical':
+      case 'high':
+      case 'high_risk':
       case 'error':   return danger;
-      default:        return textSecondary;
+      default:        return textSecondaryStatic;
     }
   }
 
@@ -694,13 +453,13 @@ class AppTheme {
     switch (status.toLowerCase()) {
       case 'completed':
       case 'done':
-      case 'success': return successLight;
+      case 'success': return success.withOpacity(0.15);
       case 'pending':
-      case 'warning': return warningLight;
+      case 'warning': return warning.withOpacity(0.15);
       case 'overdue':
       case 'critical':
-      case 'error':   return dangerLight;
-      default:        return surfaceVariant;
+      case 'error':   return danger.withOpacity(0.15);
+      default:        return surfaceVariantStatic;
     }
   }
 }

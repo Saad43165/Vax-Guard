@@ -1,0 +1,28 @@
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/user_profile.dart';
+
+class UserProfileService {
+  static const _key = 'user_profile_v2';
+
+  static Future<UserProfile> getProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_key);
+    if (raw == null || raw.isEmpty) return const UserProfile();
+    try {
+      return UserProfile.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      return const UserProfile();
+    }
+  }
+
+  static Future<void> saveProfile(UserProfile profile) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_key, jsonEncode(profile.toJson()));
+  }
+
+  static Future<bool> hasCompletedOnboarding() async {
+    final profile = await getProfile();
+    return profile.hasCompletedOnboarding;
+  }
+}

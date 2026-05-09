@@ -1,5 +1,33 @@
 import 'package:flutter/material.dart';
-import '../../core/theme.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../core/theme.dart';
+import '../utils/l10n_helper.dart';
+
+class _HealthTip {
+  final String category;
+  final String titleKey;
+  final String subtitleKey;
+  final String whyKey;
+  final String whyDescKey;
+  final String goalKey;
+  final String goalDescKey;
+  final IconData icon;
+  final Color color;
+  final String emoji;
+
+  const _HealthTip({
+    required this.category,
+    required this.titleKey,
+    required this.subtitleKey,
+    required this.whyKey,
+    required this.whyDescKey,
+    required this.goalKey,
+    required this.goalDescKey,
+    required this.icon,
+    required this.color,
+    required this.emoji,
+  });
+}
 
 class HealthTipsScreen extends StatefulWidget {
   const HealthTipsScreen({super.key});
@@ -9,269 +37,231 @@ class HealthTipsScreen extends StatefulWidget {
 }
 
 class _HealthTipsScreenState extends State<HealthTipsScreen> {
-  String _selectedCategory = 'All';
-  
+  final PageController _pageController = PageController();
+
   final List<_HealthTip> _allTips = [
-    _HealthTip(category: 'Vaccination', title: 'Stay Up to Date', content: 'Keep your vaccinations current for maximum protection against preventable diseases.', icon: Icons.vaccines_rounded, color: AppTheme.primary),
-    _HealthTip(category: 'Vaccination', title: 'Vaccine Side Effects', content: 'Mild side effects like soreness or low fever are normal. Serious reactions are rare.', icon: Icons.thermostat_rounded, color: AppTheme.primary),
-    _HealthTip(category: 'Nutrition', title: 'Boost Your Immunity', content: 'Citrus fruits, leafy greens, and lean proteins strengthen your immune system.', icon: Icons.restaurant_rounded, color: AppTheme.success),
-    _HealthTip(category: 'Nutrition', title: 'Vitamin D', content: 'Sunlight and fortified foods help maintain optimal Vitamin D levels.', icon: Icons.wb_sunny_rounded, color: AppTheme.success),
-    _HealthTip(category: 'Exercise', title: 'Stay Active', content: '30 minutes of moderate exercise daily improves overall health and immunity.', icon: Icons.fitness_center_rounded, color: AppTheme.warning),
-    _HealthTip(category: 'Exercise', title: 'Stretch Daily', content: 'Regular stretching reduces muscle tension and improves circulation.', icon: Icons.accessibility_new_rounded, color: AppTheme.warning),
-    _HealthTip(category: 'Sleep', title: 'Quality Sleep', content: 'Adults need 7-9 hours of sleep for optimal immune function.', icon: Icons.bedtime_rounded, color: AppTheme.purple),
-    _HealthTip(category: 'Sleep', title: 'Sleep Hygiene', content: 'Keep your bedroom dark and cool for better sleep quality.', icon: Icons.nightlight_rounded, color: AppTheme.purple),
-    _HealthTip(category: 'Hygiene', title: 'Hand Washing', content: 'Wash hands for 20 seconds with soap to prevent disease spread.', icon: Icons.clean_hands_rounded, color: AppTheme.secondary),
-    _HealthTip(category: 'Hygiene', title: 'Cover Coughs', content: 'Cough into your elbow, not your hands, to prevent germ spread.', icon: Icons.masks_rounded, color: AppTheme.secondary),
-    _HealthTip(category: 'Mental Health', title: 'Manage Stress', content: 'Chronic stress weakens immunity. Practice relaxation techniques daily.', icon: Icons.self_improvement_rounded, color: AppTheme.danger),
-    _HealthTip(category: 'Mental Health', title: 'Stay Connected', content: 'Social connections improve mental health and immune function.', icon: Icons.people_rounded, color: AppTheme.danger),
-    _HealthTip(category: 'Hydration', title: 'Stay Hydrated', content: 'Drink at least 8 glasses of water daily for optimal health.', icon: Icons.water_drop_rounded, color: AppTheme.primary),
-    _HealthTip(category: 'Hydration', title: 'Limit Caffeine', content: 'Excessive caffeine can disrupt sleep and hydration.', icon: Icons.coffee_rounded, color: AppTheme.primary),
-    _HealthTip(category: 'Prevention', title: 'Regular Check-ups', content: 'Annual health screenings catch potential issues early.', icon: Icons.medical_services_rounded, color: AppTheme.warning),
-    _HealthTip(category: 'Prevention', title: 'Know Your Numbers', content: 'Track blood pressure, cholesterol, and blood sugar levels.', icon: Icons.monitor_heart_rounded, color: AppTheme.warning),
-    _HealthTip(category: 'First Aid', title: 'Wound Care', content: 'Clean wounds immediately with soap and water to prevent infection.', icon: Icons.healing_rounded, color: AppTheme.danger),
-    _HealthTip(category: 'First Aid', title: 'Burn Treatment', content: 'Run cool water over burns for 10-15 minutes. Do not apply ice.', icon: Icons.local_fire_department_rounded, color: AppTheme.danger),
-    _HealthTip(category: 'Emergency', title: 'Know Emergency Signs', content: 'Difficulty breathing, chest pain, and severe bleeding need immediate care.', icon: Icons.emergency_rounded, color: AppTheme.danger),
-    _HealthTip(category: 'Emergency', title: 'CPR Basics', content: 'Learn CPR - 100-120 chest compressions per minute.', icon: Icons.favorite_rounded, color: AppTheme.danger),
+    _HealthTip(
+      category: 'HYDRATION',
+      titleKey: 'hydration_title',
+      subtitleKey: 'hydration_subtitle',
+      whyKey: 'hydration_why',
+      whyDescKey: 'hydration_why_desc',
+      goalKey: 'hydration_goal',
+      goalDescKey: 'hydration_goal_desc',
+      icon: Icons.water_drop_rounded,
+      color: const Color(0xFF0EA5E9),
+      emoji: '💧',
+    ),
+    _HealthTip(
+      category: 'NUTRITION',
+      titleKey: 'nutrition_title',
+      subtitleKey: 'nutrition_subtitle',
+      whyKey: 'nutrition_why',
+      whyDescKey: 'nutrition_why_desc',
+      goalKey: 'nutrition_goal',
+      goalDescKey: 'nutrition_goal_desc',
+      icon: Icons.restaurant_rounded,
+      color: const Color(0xFF10B981),
+      emoji: '🥗',
+    ),
+    _HealthTip(
+      category: 'REST',
+      titleKey: 'sleep_title',
+      subtitleKey: 'sleep_subtitle',
+      whyKey: 'sleep_why',
+      whyDescKey: 'sleep_why_desc',
+      goalKey: 'sleep_goal',
+      goalDescKey: 'sleep_goal_desc',
+      icon: Icons.bedtime_rounded,
+      color: const Color(0xFF8B5CF6),
+      emoji: '😴',
+    ),
+    _HealthTip(
+      category: 'ACTIVITY',
+      titleKey: 'exercise_title',
+      subtitleKey: 'exercise_subtitle',
+      whyKey: 'exercise_why',
+      whyDescKey: 'exercise_why_desc',
+      goalKey: 'exercise_goal',
+      goalDescKey: 'exercise_goal_desc',
+      icon: Icons.fitness_center_rounded,
+      color: const Color(0xFFF43F5E),
+      emoji: '🏃',
+    ),
+    _HealthTip(
+      category: 'HYGIENE',
+      titleKey: 'hygiene_title',
+      subtitleKey: 'hygiene_subtitle',
+      whyKey: 'hygiene_why',
+      whyDescKey: 'hygiene_why_desc',
+      goalKey: 'hygiene_goal',
+      goalDescKey: 'hygiene_goal_desc',
+      icon: Icons.clean_hands_rounded,
+      color: const Color(0xFF06B6D4),
+      emoji: '🧼',
+    ),
   ];
 
-  List<_HealthTip> get _filteredTips {
-    if (_selectedCategory == 'All') return _allTips;
-    return _allTips.where((tip) => tip.category == _selectedCategory).toList();
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final categories = ['All', 'Vaccination', 'Nutrition', 'Exercise', 'Sleep', 'Hygiene', 'Mental Health', 'Hydration', 'Prevention', 'First Aid', 'Emergency'];
-    
     return Scaffold(
-      backgroundColor: AppTheme.background,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 140,
-            pinned: true,
-            backgroundColor: AppTheme.success,
-            foregroundColor: Colors.white,
-            flexibleSpace: FlexibleSpaceBar(
-              title: const Text('Health Tips', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-              titlePadding: const EdgeInsetsDirectional.only(start: 24, bottom: 16),
-              background: Container(
-                decoration: const BoxDecoration(gradient: AppTheme.successGradient),
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.search_rounded),
-                onPressed: () => _showSearch(context),
-              ),
-            ],
+      backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.successGradient,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Daily Health Tips', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
-                              const SizedBox(height: 4),
-                              Text('${_allTips.length} expert tips for you', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          width: 50, height: 50,
-                          decoration: BoxDecoration(color: Colors.white.withAlpha(51), shape: BoxShape.circle),
-                          child: const Icon(Icons.lightbulb_rounded, color: Colors.white, size: 28),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(L10n.s(context, 'health_tips'), style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20)),
+        centerTitle: true,
+      ),
+      body: Stack(
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            scrollDirection: Axis.vertical,
+            itemCount: _allTips.length,
+            itemBuilder: (context, index) {
+              return _buildTipPage(_allTips[index]);
+            },
           ),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 44,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: categories.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final cat = categories[index];
-                  final isSelected = _selectedCategory == cat;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedCategory = cat),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.success : Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: isSelected ? null : Border.all(color: AppTheme.border),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        cat,
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : AppTheme.textSecondary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final tip = _filteredTips[index];
-                  return _buildTipCard(tip);
-                },
-                childCount: _filteredTips.length,
-              ),
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+          _buildNavigationIndicators(),
         ],
       ),
     );
   }
 
-  Widget _buildTipCard(_HealthTip tip) {
-    final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: () => _showTipDetail(tip),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(16), boxShadow: AppTheme.shadowSm),
-        child: Row(
-          children: [
-            Container(
-              width: 48, height: 48,
-              decoration: BoxDecoration(color: tip.color.withAlpha(26), borderRadius: BorderRadius.circular(12)),
-              child: Icon(tip.icon, color: tip.color, size: 24),
+  Widget _buildTipPage(_HealthTip tip) {
+    return Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [tip.color.withOpacity(0.4), Colors.black],
+              stops: const [0.0, 0.7],
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(tip.category, style: TextStyle(color: tip.color, fontSize: 11, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Text(tip.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                  const SizedBox(height: 2),
-                  Text(tip.content, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12, height: 1.3)),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: AppTheme.textTertiary, size: 20),
-          ],
+          ),
         ),
-      ),
-    );
-  }
-
-  void _showSearch(BuildContext context) {
-    showSearch(context: context, delegate: _HealthTipSearchDelegate(_allTips));
-  }
-
-  void _showTipDetail(_HealthTip tip) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.55,
-        decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
-        child: Column(
-          children: [
-            Container(margin: const EdgeInsets.symmetric(vertical: 12), width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2))),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: tip.color.withAlpha(26), borderRadius: BorderRadius.circular(8)), child: Text(tip.category, style: TextStyle(color: tip.color, fontSize: 12, fontWeight: FontWeight.w600))),
-                    const SizedBox(height: 16),
-                    Row(children: [
-                      Container(width: 52, height: 52, decoration: BoxDecoration(color: tip.color.withAlpha(26), borderRadius: BorderRadius.circular(14)), child: Icon(tip.icon, color: tip.color, size: 26)),
-                      const SizedBox(width: 14),
-                      Expanded(child: Text(tip.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
-                    ]),
-                    const SizedBox(height: 20),
-                    Text(tip.content, style: const TextStyle(fontSize: 15, height: 1.6, color: AppTheme.textSecondary)),
-                  ],
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Spacer(flex: 1),
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(28),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withOpacity(0.2), width: 2),
+                      boxShadow: [BoxShadow(color: tip.color.withOpacity(0.3), blurRadius: 40, spreadRadius: 10)],
+                    ),
+                    child: Text(tip.emoji, style: const TextStyle(fontSize: 64)),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 48),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(color: tip.color.withOpacity(0.3), borderRadius: BorderRadius.circular(10), border: Border.all(color: tip.color.withOpacity(0.5))),
+                  child: Text(tip.category, style: GoogleFonts.outfit(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 2.0)),
+                ),
+                const SizedBox(height: 16),
+                Text(L10n.s(context, tip.titleKey), style: GoogleFonts.outfit(color: Colors.white, fontSize: 40, fontWeight: FontWeight.w900, height: 1.1, letterSpacing: -1.0)),
+                const SizedBox(height: 8),
+                Text(L10n.s(context, tip.subtitleKey), style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.7), fontSize: 18, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 40),
+                
+                // Section 1: Why it matters
+                _buildInfoSection(L10n.s(context, tip.whyKey), L10n.s(context, tip.whyDescKey), Icons.info_outline_rounded, tip.color),
+                const SizedBox(height: 24),
+                
+                // Section 2: Goal
+                _buildInfoSection(L10n.s(context, tip.goalKey), L10n.s(context, tip.goalDescKey), Icons.track_changes_rounded, tip.color),
+                
+                const Spacer(flex: 2),
+                Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.keyboard_double_arrow_up_rounded, color: Colors.white.withOpacity(0.4), size: 32),
+                      const SizedBox(height: 8),
+                      Text(L10n.s(context, 'swipe_up_more').toUpperCase(), style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.4), fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 2)),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
-}
 
-class _HealthTip {
-  final String category;
-  final String title;
-  final String content;
-  final IconData icon;
-  final Color color;
+  Widget _buildInfoSection(String title, String desc, IconData icon, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 12),
+            Text(title.toUpperCase(), style: GoogleFonts.outfit(color: color, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(desc, style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.9), fontSize: 16, height: 1.5, fontWeight: FontWeight.w400)),
+      ],
+    );
+  }
 
-  const _HealthTip({required this.category, required this.title, required this.content, required this.icon, required this.color});
-}
-
-class _HealthTipSearchDelegate extends SearchDelegate<_HealthTip?> {
-  final List<_HealthTip> _allTips;
-
-  _HealthTipSearchDelegate(this._allTips);
-
-  @override
-  List<Widget> buildActions(BuildContext context) => [IconButton(icon: const Icon(Icons.clear_rounded), onPressed: () => query = '')];
-
-  @override
-  Widget buildLeading(BuildContext context) => IconButton(
-        icon: const Icon(Icons.arrow_back_rounded),
-        onPressed: () => close(context, null),
-      );
-
-  @override
-  Widget buildResults(BuildContext context) => _buildSearchResults();
-
-  @override
-  Widget buildSuggestions(BuildContext context) => _buildSearchResults();
-
-  Widget _buildSearchResults() {
-    final results = _allTips.where((tip) => tip.title.toLowerCase().contains(query.toLowerCase()) || tip.category.toLowerCase().contains(query.toLowerCase()) || tip.content.toLowerCase().contains(query.toLowerCase())).toList();
-    if (results.isEmpty) return const Center(child: Text('No tips found'));
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: results.length,
-      itemBuilder: (context, index) {
-        final tip = results[index];
-        return ListTile(leading: Icon(tip.icon, color: tip.color), title: Text(tip.title), subtitle: Text(tip.category), onTap: () => close(context, tip));
-      },
+  Widget _buildNavigationIndicators() {
+    return Positioned(
+      right: 16,
+      top: 0,
+      bottom: 0,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(_allTips.length, (index) {
+            return AnimatedBuilder(
+              animation: _pageController,
+              builder: (context, child) {
+                double selectedness = 0;
+                if (_pageController.hasClients) {
+                  try {
+                    selectedness = (1 - (_pageController.page! - index).abs()).clamp(0, 1);
+                  } catch (_) {}
+                }
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 6),
+                  width: 4,
+                  height: 12 + (24 * selectedness),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2 + (0.8 * selectedness)),
+                    borderRadius: BorderRadius.circular(4),
+                    boxShadow: selectedness > 0.5 ? [BoxShadow(color: Colors.white.withOpacity(0.3), blurRadius: 10)] : [],
+                  ),
+                );
+              },
+            );
+          }),
+        ),
+      ),
     );
   }
 }
